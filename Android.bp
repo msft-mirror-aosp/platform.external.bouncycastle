@@ -101,6 +101,7 @@ unbundled_visibility = [
     "//frameworks/opt/net/wifi/tests/wifitests",
     "//libcore",
     "//system/extras/verity",
+    "//tools/security/remote_provisioning/attestation_testing",
     "//vendor:__subpackages__",
 ]
 
