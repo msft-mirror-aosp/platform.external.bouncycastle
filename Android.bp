@@ -67,6 +67,7 @@ java_library {
         "//art/build/sdk",
         "//external/wycheproof",
         "//libcore",
+        "//packages/modules/ArtPrebuilt",
     ],
     apex_available: [
         "com.android.art",
