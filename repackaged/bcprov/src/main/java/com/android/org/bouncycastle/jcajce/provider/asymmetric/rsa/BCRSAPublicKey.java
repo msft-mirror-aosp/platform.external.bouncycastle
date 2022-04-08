@@ -22,30 +22,20 @@ import com.android.org.bouncycastle.util.Strings;
 public class BCRSAPublicKey
     implements RSAPublicKey
 {
-    static final AlgorithmIdentifier DEFAULT_ALGORITHM_IDENTIFIER = new AlgorithmIdentifier(PKCSObjectIdentifiers.rsaEncryption, DERNull.INSTANCE);
+    private static final AlgorithmIdentifier DEFAULT_ALGORITHM_IDENTIFIER = new AlgorithmIdentifier(PKCSObjectIdentifiers.rsaEncryption, DERNull.INSTANCE);
 
     static final long serialVersionUID = 2675817738516720772L;
 
     private BigInteger modulus;
     private BigInteger publicExponent;
-
     private transient AlgorithmIdentifier algorithmIdentifier;
-    private transient RSAKeyParameters rsaPublicKey;
 
     BCRSAPublicKey(
         RSAKeyParameters key)
     {
-        this(DEFAULT_ALGORITHM_IDENTIFIER, key);
-    }
-
-    BCRSAPublicKey(
-        AlgorithmIdentifier algId,
-        RSAKeyParameters key)
-    {
-        this.algorithmIdentifier = algId;
+        this.algorithmIdentifier = DEFAULT_ALGORITHM_IDENTIFIER;
         this.modulus = key.getModulus();
         this.publicExponent = key.getExponent();
-        this.rsaPublicKey = key;
     }
 
     BCRSAPublicKey(
@@ -54,7 +44,6 @@ public class BCRSAPublicKey
         this.algorithmIdentifier = DEFAULT_ALGORITHM_IDENTIFIER;
         this.modulus = spec.getModulus();
         this.publicExponent = spec.getPublicExponent();
-        this.rsaPublicKey = new RSAKeyParameters(false, modulus, publicExponent);
     }
 
     BCRSAPublicKey(
@@ -63,7 +52,6 @@ public class BCRSAPublicKey
         this.algorithmIdentifier = DEFAULT_ALGORITHM_IDENTIFIER;
         this.modulus = key.getModulus();
         this.publicExponent = key.getPublicExponent();
-        this.rsaPublicKey = new RSAKeyParameters(false, modulus, publicExponent);
     }
 
     BCRSAPublicKey(
@@ -81,7 +69,6 @@ public class BCRSAPublicKey
             this.algorithmIdentifier = info.getAlgorithm();
             this.modulus = pubKey.getModulus();
             this.publicExponent = pubKey.getPublicExponent();
-            this.rsaPublicKey = new RSAKeyParameters(false, modulus, publicExponent);
         }
         catch (IOException e)
         {
@@ -111,10 +98,6 @@ public class BCRSAPublicKey
 
     public String getAlgorithm()
     {
-        if (algorithmIdentifier.getAlgorithm().equals(PKCSObjectIdentifiers.id_RSASSA_PSS))
-        {
-            return "RSASSA-PSS";
-        }
         return "RSA";
     }
 
@@ -126,11 +109,6 @@ public class BCRSAPublicKey
     public byte[] getEncoded()
     {
         return KeyUtil.getEncodedSubjectPublicKeyInfo(algorithmIdentifier, new com.android.org.bouncycastle.asn1.pkcs.RSAPublicKey(getModulus(), getPublicExponent()));
-    }
-
-    RSAKeyParameters engineGetKeyParameters()
-    {
-        return rsaPublicKey;
     }
 
     public int hashCode()
@@ -186,7 +164,6 @@ public class BCRSAPublicKey
         {
             algorithmIdentifier = DEFAULT_ALGORITHM_IDENTIFIER;
         }
-        this.rsaPublicKey = new RSAKeyParameters(false, modulus, publicExponent);
     }
 
     private void writeObject(

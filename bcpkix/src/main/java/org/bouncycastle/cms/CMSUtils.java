@@ -249,7 +249,7 @@ class CMSUtils
         {
             OCSPResponse resp = OCSPResponse.getInstance(infoFormat.getInfo());
 
-            if (OCSPResponseStatus.SUCCESSFUL != resp.getResponseStatus().getIntValue())
+            if (resp.getResponseStatus().getValue().intValue() != OCSPResponseStatus.SUCCESSFUL)
             {
                 throw new IllegalArgumentException("cannot add unsuccessful OCSP response to CMS SignedData");
             }

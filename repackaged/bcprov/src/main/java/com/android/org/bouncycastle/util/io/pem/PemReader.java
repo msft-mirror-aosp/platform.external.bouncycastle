@@ -13,12 +13,14 @@ import com.android.org.bouncycastle.util.encoders.Base64;
  * A generic PEM reader, based on the format outlined in RFC 1421
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class PemReader
     extends BufferedReader
 {
     private static final String BEGIN = "-----BEGIN ";
     private static final String END = "-----END ";
 
+    @libcore.api.CorePlatformApi
     public PemReader(Reader reader)
     {
         super(reader);
@@ -30,6 +32,7 @@ public class PemReader
      * @return the next object in the stream, null if no objects left.
      * @throws IOException in case of a parse error.
      */
+    @libcore.api.CorePlatformApi
     public PemObject readPemObject()
         throws IOException
     {
@@ -44,11 +47,10 @@ public class PemReader
         {
             line = line.substring(BEGIN.length());
             int index = line.indexOf('-');
+            String type = line.substring(0, index);
 
-            if (index > 0 && line.endsWith("-----") && (line.length() - index) == 5)
+            if (index > 0)
             {
-                String type = line.substring(0, index);
-
                 return loadObject(type);
             }
         }

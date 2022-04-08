@@ -15,14 +15,6 @@ import com.android.org.bouncycastle.asn1.ASN1TaggedObject;
 import com.android.org.bouncycastle.asn1.DERSequence;
 
 /**
- * <pre>
- *     Extensions        ::=   SEQUENCE SIZE (1..MAX) OF Extension
- *
- *     Extension         ::=   SEQUENCE {
- *        extnId            EXTENSION.&amp;id ({ExtensionSet}),
- *        critical          BOOLEAN DEFAULT FALSE,
- *        extnValue         OCTET STRING }
- * </pre>
  * @hide This class is not part of the Android public SDK API
  */
 public class Extensions
@@ -30,16 +22,6 @@ public class Extensions
 {
     private Hashtable extensions = new Hashtable();
     private Vector ordering = new Vector();
-
-    public static Extension getExtension(Extensions extensions, ASN1ObjectIdentifier oid)
-    {
-        return null == extensions ? null : extensions.getExtension(oid);
-    }
-
-    public static ASN1Encodable getExtensionParsedValue(Extensions extensions, ASN1ObjectIdentifier oid)
-    {
-        return null == extensions ? null : extensions.getExtensionParsedValue(oid);
-    }
 
     public static Extensions getInstance(
         ASN1TaggedObject obj,
@@ -167,9 +149,9 @@ public class Extensions
      */
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector vec = new ASN1EncodableVector(ordering.size());
-
+        ASN1EncodableVector vec = new ASN1EncodableVector();
         Enumeration e = ordering.elements();
+
         while (e.hasMoreElements())
         {
             ASN1ObjectIdentifier oid = (ASN1ObjectIdentifier)e.nextElement();

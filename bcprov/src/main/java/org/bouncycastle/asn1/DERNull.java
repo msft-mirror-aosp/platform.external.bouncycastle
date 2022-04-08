@@ -14,7 +14,11 @@ public class DERNull
 
     private static final byte[]  zeroBytes = new byte[0];
 
-    private DERNull()
+    /**
+     * @deprecated use DERNull.INSTANCE
+     */
+    // Android-changed: Reduce visibility to protected.
+    protected DERNull()
     {
     }
 
@@ -28,8 +32,10 @@ public class DERNull
         return 2;
     }
 
-    void encode(ASN1OutputStream out, boolean withTag) throws IOException
+    void encode(
+        ASN1OutputStream out)
+        throws IOException
     {
-        out.writeEncoded(withTag, BERTags.NULL, zeroBytes);
+        out.writeEncoded(BERTags.NULL, zeroBytes);
     }
 }

@@ -10,11 +10,6 @@ public class ExtCertPathValidatorException
 
     private Throwable cause;
 
-    public ExtCertPathValidatorException(String message)
-    {
-        super(message);
-    }
-
     public ExtCertPathValidatorException(String message, Throwable cause)
     {
         super(message);

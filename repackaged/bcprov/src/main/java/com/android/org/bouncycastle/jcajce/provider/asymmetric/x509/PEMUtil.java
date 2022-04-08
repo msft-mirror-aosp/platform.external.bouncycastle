@@ -9,64 +9,43 @@ import com.android.org.bouncycastle.util.encoders.Base64;
 
 class PEMUtil
 {
-    /**
-     * Boundary class. Keeps track of the required header/footer pair for the
-     * current PEM object.
-     *
-     */
-    private class Boundaries
+    private final String _header1;
+    private final String _header2;
+    private final String _header3;
+    private final String _footer1;
+    private final String _footer2;
+    private final String _footer3;
+
+    PEMUtil(
+        String type)
     {
-        private final String _header;
-        private final String _footer;
-
-        private Boundaries(String type)
-        {
-            this._header = "-----BEGIN " + type + "-----";
-            this._footer = "-----END " + type + "-----";
-        }
-
-        public boolean isTheExpectedHeader(String line)
-        {
-            return line.startsWith(_header);
-        }
-
-        public boolean isTheExpectedFooter(String line)
-        {
-            return line.startsWith(_footer);
-        }
+        _header1 = "-----BEGIN " + type + "-----";
+        _header2 = "-----BEGIN X509 " + type + "-----";
+        _header3 = "-----BEGIN PKCS7-----";
+        _footer1 = "-----END " + type + "-----";
+        _footer2 = "-----END X509 " + type + "-----";
+        _footer3 = "-----END PKCS7-----";
     }
 
-    private final Boundaries[] _supportedBoundaries;
-
-    PEMUtil(String type)
+    private String readLine(
+        InputStream in)
+        throws IOException
     {
-        _supportedBoundaries = new Boundaries[]
-        { new Boundaries(type), new Boundaries("X509 " + type),
-                new Boundaries("PKCS7") };
-    }
-
-    private String readLine(InputStream in) throws IOException
-    {
-        int c;
+        int             c;
         StringBuffer l = new StringBuffer();
 
         do
         {
             while (((c = in.read()) != '\r') && c != '\n' && (c >= 0))
             {
-                l.append((char) c);
+                l.append((char)c);
             }
         }
         while (c >= 0 && l.length() == 0);
-   
+
         if (c < 0)
         {
-            // make sure to return the read bytes if the end of file is encountered
-            if (l.length() == 0)
-            {
-                return null;
-            }
-            return l.toString();
+            return null;
         }
 
         // make sure we parse to end of line.
@@ -88,30 +67,6 @@ class PEMUtil
         return l.toString();
     }
 
-    /**
-     * Returns a {@link Boundaries} object representing the passed in boundary
-     * string.
-     * 
-     * @param line the boundary string
-     * @return the {@link Boundaries} object corresponding to the given boundary
-     *         string or <code>null</code> if the passed in string is not a valid
-     *         boundary.
-     */
-    private Boundaries getBoundaries(String line)
-    {
-        for (int i = 0; i != _supportedBoundaries.length; i++)
-        {
-            Boundaries boundary = _supportedBoundaries[i];
-            
-            if (boundary.isTheExpectedHeader(line) || boundary.isTheExpectedFooter(line))
-            {
-                return boundary;
-            }
-        }
-
-        return null;
-    }
-
     ASN1Sequence readPEMObject(
         InputStream in)
         throws IOException
@@ -119,43 +74,22 @@ class PEMUtil
         String line;
         StringBuffer pemBuf = new StringBuffer();
 
-        Boundaries header = null;
-
-        while (header == null && (line = readLine(in)) != null)
+        while ((line = readLine(in)) != null)
         {
-            header = getBoundaries(line);
-            if (header != null && !header.isTheExpectedHeader(line))
+            if (line.startsWith(_header1) || line.startsWith(_header2) || line.startsWith(_header3))
             {
-                throw new IOException("malformed PEM data: found footer where header was expected");
+                break;
             }
         }
 
-        if (header == null)
+        while ((line = readLine(in)) != null)
         {
-            throw new IOException("malformed PEM data: no header found");
-        }
-
-        Boundaries footer = null;
-
-        while (footer == null && (line = readLine(in)) != null)
-        {
-            footer = getBoundaries(line);
-            if (footer != null)
+            if (line.startsWith(_footer1) || line.startsWith(_footer2) || line.startsWith(_footer3))
             {
-                if (!header.isTheExpectedFooter(line))
-                {
-                    throw new IOException("malformed PEM data: header/footer mismatch");
-                }
+                break;
             }
-            else
-            {
-                pemBuf.append(line);
-            }
-        }
 
-        if (footer == null)
-        {
-            throw new IOException("malformed PEM data: no footer found");
+            pemBuf.append(line);
         }
 
         if (pemBuf.length() != 0)

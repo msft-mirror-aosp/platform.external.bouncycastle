@@ -1,6 +1,7 @@
 /* GENERATED SOURCE. DO NOT MODIFY. */
 package com.android.org.bouncycastle.jcajce.provider.symmetric.util;
 
+import java.lang.reflect.Method;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -64,7 +65,7 @@ public class BaseMac
 
     protected void engineInit(
         Key                     key,
-        final AlgorithmParameterSpec  params)
+        AlgorithmParameterSpec  params)
         throws InvalidKeyException, InvalidAlgorithmParameterException
     {
         CipherParameters        param;
@@ -179,7 +180,7 @@ public class BaseMac
             param = new KeyParameter(key.getEncoded());
         }
 
-        final KeyParameter keyParam;
+        KeyParameter keyParam;
         if (param instanceof ParametersWithIV)
         {
             keyParam = (KeyParameter)((ParametersWithIV)param).getParameters();
@@ -217,7 +218,17 @@ public class BaseMac
         }
         else if (gcmSpecClass != null && gcmSpecClass.isAssignableFrom(params.getClass()))
         {
-            param = GcmSpecUtil.extractAeadParameters(keyParam, params);
+            try
+            {
+                Method tLen = gcmSpecClass.getDeclaredMethod("getTLen", new Class[0]);
+                Method iv= gcmSpecClass.getDeclaredMethod("getIV", new Class[0]);
+
+                param = new AEADParameters(keyParam, ((Integer)tLen.invoke(params, new Object[0])).intValue(), (byte[])iv.invoke(params, new Object[0]));
+            }
+            catch (Exception e)
+            {
+                throw new InvalidAlgorithmParameterException("Cannot process GCMParameterSpec.");
+            }
         }
         else if (!(params instanceof PBEParameterSpec))
         {

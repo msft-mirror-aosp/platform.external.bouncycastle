@@ -1,6 +1,7 @@
 package org.bouncycastle.jcajce.provider.symmetric.util;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
@@ -27,9 +28,7 @@ import javax.crypto.spec.PBEParameterSpec;
 // import javax.crypto.spec.RC2ParameterSpec;
 // import javax.crypto.spec.RC5ParameterSpec;
 
-import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.cms.GCMParameters;
-import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.BufferedBlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
@@ -40,7 +39,6 @@ import org.bouncycastle.crypto.OutputLengthException;
 // Android-removed: Unsupported algorithms
 // import org.bouncycastle.crypto.engines.DSTU7624Engine;
 import org.bouncycastle.crypto.modes.AEADBlockCipher;
-import org.bouncycastle.crypto.modes.AEADCipher;
 import org.bouncycastle.crypto.modes.CBCBlockCipher;
 import org.bouncycastle.crypto.modes.CCMBlockCipher;
 import org.bouncycastle.crypto.modes.CFBBlockCipher;
@@ -84,49 +82,47 @@ import org.bouncycastle.jcajce.spec.AEADParameterSpec;
 // Android-removed: Unsupported algorithms
 // import org.bouncycastle.jcajce.spec.GOST28147ParameterSpec;
 // import org.bouncycastle.jcajce.spec.RepeatedSecretKeySpec;
-import org.bouncycastle.util.Arrays;
 import org.bouncycastle.util.Strings;
 
 public class BaseBlockCipher
     extends BaseWrapCipher
     implements PBE
 {
-    private static final int BUF_SIZE = 512;
     private static final Class gcmSpecClass = ClassUtil.loadClass(BaseBlockCipher.class, "javax.crypto.spec.GCMParameterSpec");
 
     //
     // specs we can handle.
     //
-    private Class[] availableSpecs =
-        {
-            // Android-removed: Unsupported alhorithms
-            // RC2ParameterSpec.class,
-            // RC5ParameterSpec.class,
-            gcmSpecClass,
-            // Android-removed: unsupported algorithms
-            // GOST28147ParameterSpec.class,
-            IvParameterSpec.class,
-            PBEParameterSpec.class
-        };
+    private Class[]                 availableSpecs =
+                                    {
+                                        // Android-removed: Unsupported algorithms
+                                        // RC2ParameterSpec.class,
+                                        // RC5ParameterSpec.class,
+                                        gcmSpecClass,
+                                        // Android-removed: Unsupported algorithms
+                                        // GOST28147ParameterSpec.class
+                                        IvParameterSpec.class,
+                                        PBEParameterSpec.class
+                                    };
 
-    private BlockCipher baseEngine;
-    private BlockCipherProvider engineProvider;
-    private GenericBlockCipher cipher;
-    private ParametersWithIV ivParam;
-    private AEADParameters aeadParams;
+    private BlockCipher             baseEngine;
+    private BlockCipherProvider     engineProvider;
+    private GenericBlockCipher      cipher;
+    private ParametersWithIV        ivParam;
+    private AEADParameters          aeadParams;
 
     private int keySizeInBits;
     private int scheme = -1;
     private int digest;
 
-    private int ivLength = 0;
+    private int                     ivLength = 0;
 
-    private boolean padded;
-    private boolean fixedIv = true;
-    private PBEParameterSpec pbeSpec = null;
-    private String pbeAlgorithm = null;
+    private boolean                 padded;
+    private boolean                 fixedIv = true;
+    private PBEParameterSpec        pbeSpec = null;
+    private String                  pbeAlgorithm = null;
 
-    private String modeName = null;
+    private String                  modeName = null;
 
     protected BaseBlockCipher(
         BlockCipher engine)
@@ -167,17 +163,6 @@ public class BaseBlockCipher
     {
         this.baseEngine = engine.getUnderlyingCipher();
         this.ivLength = baseEngine.getBlockSize();
-        this.cipher = new AEADGenericBlockCipher(engine);
-    }
-
-    protected BaseBlockCipher(
-        AEADCipher engine,
-        boolean fixedIv,
-        int ivLength)
-    {
-        this.baseEngine = null;
-        this.fixedIv = fixedIv;
-        this.ivLength = ivLength;
         this.cipher = new AEADGenericBlockCipher(engine);
     }
 
@@ -232,10 +217,6 @@ public class BaseBlockCipher
 
     protected int engineGetBlockSize()
     {
-        if (baseEngine == null)
-        {
-            return -1;
-        }
         return baseEngine.getBlockSize();
     }
 
@@ -250,13 +231,13 @@ public class BaseBlockCipher
     }
 
     protected int engineGetKeySize(
-        Key key)
+        Key     key)
     {
         return key.getEncoded().length * 8;
     }
 
     protected int engineGetOutputSize(
-        int inputLen)
+        int     inputLen)
     {
         return cipher.getOutputSize(inputLen);
     }
@@ -279,35 +260,19 @@ public class BaseBlockCipher
             }
             else if (aeadParams != null)
             {
-                // CHACHA20-Poly1305
-                if (baseEngine == null)
+                try
                 {
-                    try
-                    {
-                        engineParams = createParametersInstance(PKCSObjectIdentifiers.id_alg_AEADChaCha20Poly1305.getId());
-                        engineParams.init(new DEROctetString(aeadParams.getNonce()).getEncoded());
-                    }
-                    catch (Exception e)
-                    {
-                        throw new RuntimeException(e.toString());
-                    }
+                    engineParams = createParametersInstance("GCM");
+                    engineParams.init(new GCMParameters(aeadParams.getNonce(), aeadParams.getMacSize() / 8).getEncoded());
                 }
-                else
+                catch (Exception e)
                 {
-                    try
-                    {
-                        engineParams = createParametersInstance("GCM");
-                        engineParams.init(new GCMParameters(aeadParams.getNonce(), aeadParams.getMacSize() / 8).getEncoded());
-                    }
-                    catch (Exception e)
-                    {
-                        throw new RuntimeException(e.toString());
-                    }
+                    throw new RuntimeException(e.toString());
                 }
             }
             else if (ivParam != null)
             {
-                String name = cipher.getUnderlyingCipher().getAlgorithmName();
+                String  name = cipher.getUnderlyingCipher().getAlgorithmName();
 
                 if (name.indexOf('/') >= 0)
                 {
@@ -330,27 +295,28 @@ public class BaseBlockCipher
     }
 
     protected void engineSetMode(
-        String mode)
+        String  mode)
         throws NoSuchAlgorithmException
     {
-        if (baseEngine == null)
-        {
-            throw new NoSuchAlgorithmException("no mode supported for this algorithm");
-        }
         modeName = Strings.toUpperCase(mode);
 
-        if (modeName.equals("ECB"))
+        // Android-changed: Ignore case since modes are case insensitive
+        // https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html
+        if (modeName.equalsIgnoreCase("ECB"))
         {
             ivLength = 0;
             cipher = new BufferedGenericBlockCipher(baseEngine);
         }
-        else if (modeName.equals("CBC"))
+        // Android-changed: Ignore case since modes are case insensitive
+        // https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html
+        else if (modeName.equalsIgnoreCase("CBC"))
         {
             ivLength = baseEngine.getBlockSize();
             cipher = new BufferedGenericBlockCipher(
-                new CBCBlockCipher(baseEngine));
+                            new CBCBlockCipher(baseEngine));
         }
-        else if (modeName.startsWith("OFB"))
+        // Android-changed: Use equals instead of startsWith to avoid unintentional matches
+        else if (modeName.equalsIgnoreCase("OFB"))
         {
             ivLength = baseEngine.getBlockSize();
             if (modeName.length() != 3)
@@ -358,15 +324,16 @@ public class BaseBlockCipher
                 int wordSize = Integer.parseInt(modeName.substring(3));
 
                 cipher = new BufferedGenericBlockCipher(
-                    new OFBBlockCipher(baseEngine, wordSize));
+                                new OFBBlockCipher(baseEngine, wordSize));
             }
             else
             {
                 cipher = new BufferedGenericBlockCipher(
-                    new OFBBlockCipher(baseEngine, 8 * baseEngine.getBlockSize()));
+                        new OFBBlockCipher(baseEngine, 8 * baseEngine.getBlockSize()));
             }
         }
-        else if (modeName.startsWith("CFB"))
+        // Android-changed: Use equals instead of startsWith to avoid unintentional matches
+        else if (modeName.equalsIgnoreCase("CFB"))
         {
             ivLength = baseEngine.getBlockSize();
             if (modeName.length() != 3)
@@ -374,36 +341,31 @@ public class BaseBlockCipher
                 int wordSize = Integer.parseInt(modeName.substring(3));
 
                 cipher = new BufferedGenericBlockCipher(
-                    new CFBBlockCipher(baseEngine, wordSize));
+                                new CFBBlockCipher(baseEngine, wordSize));
             }
             else
             {
                 cipher = new BufferedGenericBlockCipher(
-                    new CFBBlockCipher(baseEngine, 8 * baseEngine.getBlockSize()));
+                        new CFBBlockCipher(baseEngine, 8 * baseEngine.getBlockSize()));
             }
         }
         // BEGIN Android-removed: Unsupported modes
         /*
-        else if (modeName.startsWith("PGPCFB"))
+        else if (modeName.startsWith("PGP"))
         {
-            boolean inlineIV = modeName.equals("PGPCFBWITHIV");
+            boolean inlineIV = modeName.equalsIgnoreCase("PGPCFBwithIV");
 
-            if (!inlineIV && modeName.length() != 6)
-            {
-                throw new NoSuchAlgorithmException("no mode support for " + modeName);
-            }
-            
             ivLength = baseEngine.getBlockSize();
             cipher = new BufferedGenericBlockCipher(
                 new PGPCFBBlockCipher(baseEngine, inlineIV));
         }
-        else if (modeName.equals("OPENPGPCFB"))
+        else if (modeName.equalsIgnoreCase("OpenPGPCFB"))
         {
             ivLength = 0;
             cipher = new BufferedGenericBlockCipher(
                 new OpenPGPCFBBlockCipher(baseEngine));
         }
-        else if (modeName.equals("SIC"))
+        else if (modeName.startsWith("SIC"))
         {
             ivLength = baseEngine.getBlockSize();
             if (ivLength < 16)
@@ -412,11 +374,12 @@ public class BaseBlockCipher
             }
             fixedIv = false;
             cipher = new BufferedGenericBlockCipher(new BufferedBlockCipher(
-                new SICBlockCipher(baseEngine)));
+                        new SICBlockCipher(baseEngine)));
         }
         */
         // END Android-removed: Unsupported modes
-        else if (modeName.equals("CTR"))
+        // Android-changed: Use equals instead of startsWith to avoid unintentional matches
+        else if (modeName.equalsIgnoreCase("CTR"))
         {
             ivLength = baseEngine.getBlockSize();
             fixedIv = false;
@@ -425,7 +388,7 @@ public class BaseBlockCipher
             if (baseEngine instanceof DSTU7624Engine)
             {
                 cipher = new BufferedGenericBlockCipher(new BufferedBlockCipher(
-                    new KCTRBlockCipher(baseEngine)));
+                                    new KCTRBlockCipher(baseEngine)));
             }
             else
             {
@@ -438,26 +401,28 @@ public class BaseBlockCipher
         }
         // BEGIN Android-removed: Unsupported modes
         /*
-        else if (modeName.equals("GOFB"))
+        else if (modeName.startsWith("GOFB"))
         {
             ivLength = baseEngine.getBlockSize();
             cipher = new BufferedGenericBlockCipher(new BufferedBlockCipher(
-                new GOFBBlockCipher(baseEngine)));
+                        new GOFBBlockCipher(baseEngine)));
         }
-        else if (modeName.equals("GCFB"))
+        else if (modeName.startsWith("GCFB"))
         {
             ivLength = baseEngine.getBlockSize();
             cipher = new BufferedGenericBlockCipher(new BufferedBlockCipher(
-                new GCFBBlockCipher(baseEngine)));
+                        new GCFBBlockCipher(baseEngine)));
         }
         */
         // END Android-removed: Unsupported modes
-        else if (modeName.equals("CTS"))
+        // Android-changed: Use equals instead of startsWith to avoid unintentional matches
+        else if (modeName.equalsIgnoreCase("CTS"))
         {
             ivLength = baseEngine.getBlockSize();
             cipher = new BufferedGenericBlockCipher(new CTSBlockCipher(new CBCBlockCipher(baseEngine)));
         }
-        else if (modeName.equals("CCM"))
+        // Android-changed: Use equals instead of startsWith to avoid unintentional matches
+        else if (modeName.equalsIgnoreCase("CCM"))
         {
             ivLength = 12; // CCM nonce 7..13 bytes
             // BEGIN Android-removed: Unsupported algorithms
@@ -476,7 +441,7 @@ public class BaseBlockCipher
         }
         // BEGIN Android-removed: Unsupported modes
         /*
-        else if (modeName.equals("OCB"))
+        else if (modeName.startsWith("OCB"))
         {
             if (engineProvider != null)
             {
@@ -491,14 +456,15 @@ public class BaseBlockCipher
                 throw new NoSuchAlgorithmException("can't support mode " + mode);
             }
         }
-        else if (modeName.equals("EAX"))
+        else if (modeName.startsWith("EAX"))
         {
             ivLength = baseEngine.getBlockSize();
             cipher = new AEADGenericBlockCipher(new EAXBlockCipher(baseEngine));
         }
         */
         // END Android-removed: Unsupported modes
-        else if (modeName.equals("GCM"))
+        // Android-changed: Use equals instead of startsWith to not catch GCM-SIV
+        else if (modeName.equalsIgnoreCase("GCM"))
         {
             ivLength = baseEngine.getBlockSize();
             // BEGIN Android-removed: Unsupported algorithms
@@ -522,15 +488,10 @@ public class BaseBlockCipher
     }
 
     protected void engineSetPadding(
-        String padding)
-        throws NoSuchPaddingException
+        String  padding)
+    throws NoSuchPaddingException
     {
-        if (baseEngine == null)
-        {
-            throw new NoSuchPaddingException("no padding supported for this algorithm");
-        }
-
-        String paddingName = Strings.toUpperCase(padding);
+        String  paddingName = Strings.toUpperCase(padding);
 
         if (paddingName.equals("NOPADDING"))
         {
@@ -589,13 +550,13 @@ public class BaseBlockCipher
     // END Android-added: Handling missing IVs
 
     protected void engineInit(
-        int opmode,
-        Key key,
-        final AlgorithmParameterSpec params,
-        SecureRandom random)
+        int                     opmode,
+        Key                     key,
+        AlgorithmParameterSpec  params,
+        SecureRandom            random)
         throws InvalidKeyException, InvalidAlgorithmParameterException
     {
-        CipherParameters param;
+        CipherParameters        param;
 
         this.pbeSpec = null;
         this.pbeAlgorithm = null;
@@ -613,7 +574,7 @@ public class BaseBlockCipher
         //
         // for RC5-64 we must have some default parameters
         //
-        if (params == null && (baseEngine != null && baseEngine.getAlgorithmName().startsWith("RC5-64")))
+        if (params == null && baseEngine.getAlgorithmName().startsWith("RC5-64"))
         {
             throw new InvalidAlgorithmParameterException("RC5 requires an RC5ParametersSpec to be passed in.");
         }
@@ -637,7 +598,7 @@ public class BaseBlockCipher
                 throw new InvalidKeyException("PKCS12 requires a SecretKey/PBEKey");
             }
 
-            if (params instanceof PBEParameterSpec)
+            if (params instanceof  PBEParameterSpec)
             {
                 pbeSpec = (PBEParameterSpec)params;
             }
@@ -842,10 +803,10 @@ public class BaseBlockCipher
         /*
         else if (params instanceof GOST28147ParameterSpec)
         {
-            GOST28147ParameterSpec gost28147Param = (GOST28147ParameterSpec)params;
+            GOST28147ParameterSpec    gost28147Param = (GOST28147ParameterSpec)params;
 
             param = new ParametersWithSBox(
-                new KeyParameter(key.getEncoded()), ((GOST28147ParameterSpec)params).getSbox());
+                       new KeyParameter(key.getEncoded()), ((GOST28147ParameterSpec)params).getSbox());
 
             if (gost28147Param.getIV() != null && ivLength != 0)
             {
@@ -862,7 +823,7 @@ public class BaseBlockCipher
         }
         else if (params instanceof RC2ParameterSpec)
         {
-            RC2ParameterSpec rc2Param = (RC2ParameterSpec)params;
+            RC2ParameterSpec    rc2Param = (RC2ParameterSpec)params;
 
             param = new RC2Parameters(key.getEncoded(), ((RC2ParameterSpec)params).getEffectiveKeyBits());
 
@@ -881,7 +842,7 @@ public class BaseBlockCipher
         }
         else if (params instanceof RC5ParameterSpec)
         {
-            RC5ParameterSpec rc5Param = (RC5ParameterSpec)params;
+            RC5ParameterSpec    rc5Param = (RC5ParameterSpec)params;
 
             param = new RC5Parameters(key.getEncoded(), ((RC5ParameterSpec)params).getRounds());
             if (baseEngine.getAlgorithmName().startsWith("RC5"))
@@ -927,17 +888,26 @@ public class BaseBlockCipher
                 throw new InvalidAlgorithmParameterException("GCMParameterSpec can only be used with AEAD modes.");
             }
 
-            final KeyParameter keyParam;
-            if (param instanceof ParametersWithIV)
+            try
             {
-                keyParam = (KeyParameter)((ParametersWithIV)param).getParameters();
-            }
-            else
-            {
-                keyParam = (KeyParameter)param;
-            }
+                Method tLen = gcmSpecClass.getDeclaredMethod("getTLen", new Class[0]);
+                Method iv= gcmSpecClass.getDeclaredMethod("getIV", new Class[0]);
 
-            param = aeadParams = GcmSpecUtil.extractAeadParameters(keyParam, params);
+                KeyParameter keyParam;
+                if (param instanceof ParametersWithIV)
+                {
+                    keyParam = (KeyParameter)((ParametersWithIV)param).getParameters();
+                }
+                else
+                {
+                    keyParam = (KeyParameter)param;
+                }
+                param = aeadParams = new AEADParameters(keyParam, ((Integer)tLen.invoke(params, new Object[0])).intValue(), (byte[])iv.invoke(params, new Object[0]));
+            }
+            catch (Exception e)
+            {
+                throw new InvalidAlgorithmParameterException("Cannot process GCMParameterSpec.");
+            }
         }
         else if (params != null && !(params instanceof PBEParameterSpec))
         {
@@ -946,7 +916,7 @@ public class BaseBlockCipher
 
         if ((ivLength != 0) && !(param instanceof ParametersWithIV) && !(param instanceof AEADParameters))
         {
-            SecureRandom ivRandom = random;
+            SecureRandom    ivRandom = random;
 
             if (ivRandom == null)
             {
@@ -955,7 +925,7 @@ public class BaseBlockCipher
 
             if ((opmode == Cipher.ENCRYPT_MODE) || (opmode == Cipher.WRAP_MODE))
             {
-                byte[] iv = new byte[ivLength];
+                byte[]  iv = new byte[ivLength];
 
                 // BEGIN Android-changed: For PBE keys with no IV, log and use IV of 0
                 // These keys were accepted in BC 1.52 (and treated as having an IV of 0) but
@@ -1011,6 +981,7 @@ public class BaseBlockCipher
         }
 
 
+
         if (random != null && padded)
         {
             param = new ParametersWithRandom(param, random);
@@ -1034,20 +1005,12 @@ public class BaseBlockCipher
 
             if (cipher instanceof AEADGenericBlockCipher && aeadParams == null)
             {
-                AEADCipher aeadCipher = ((AEADGenericBlockCipher)cipher).cipher;
+                AEADBlockCipher aeadCipher = ((AEADGenericBlockCipher)cipher).cipher;
 
                 aeadParams = new AEADParameters((KeyParameter)ivParam.getParameters(), aeadCipher.getMac().length * 8, ivParam.getIV());
             }
         }
-        // BEGIN Android-removed: keeping pre 1.68 behaviour
-        /*
-        catch (IllegalArgumentException e)
-        {
-            throw new InvalidAlgorithmParameterException(e.getMessage(), e);
-        }
-        */
-        // END Android-removed: keeping pre 1.68 behaviour
-        catch (Exception e)
+        catch (final Exception e)
         {
             throw new InvalidKeyOrParametersException(e.getMessage(), e);
         }
@@ -1115,17 +1078,33 @@ public class BaseBlockCipher
     }
 
     protected void engineInit(
-        int opmode,
-        Key key,
+        int                 opmode,
+        Key                 key,
         AlgorithmParameters params,
-        SecureRandom random)
-        throws InvalidKeyException, InvalidAlgorithmParameterException
+        SecureRandom        random) 
+    throws InvalidKeyException, InvalidAlgorithmParameterException
     {
-        AlgorithmParameterSpec paramSpec = null;
+        AlgorithmParameterSpec  paramSpec = null;
 
         if (params != null)
         {
-            paramSpec = SpecUtil.extractSpec(params, availableSpecs);
+            for (int i = 0; i != availableSpecs.length; i++)
+            {
+                if (availableSpecs[i] == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    paramSpec = params.getParameterSpec(availableSpecs[i]);
+                    break;
+                }
+                catch (Exception e)
+                {
+                    // try again if possible
+                }
+            }
 
             if (paramSpec == null)
             {
@@ -1134,14 +1113,14 @@ public class BaseBlockCipher
         }
 
         engineInit(opmode, key, paramSpec, random);
-
+        
         engineParams = params;
     }
 
     protected void engineInit(
-        int opmode,
-        Key key,
-        SecureRandom random)
+        int                 opmode,
+        Key                 key,
+        SecureRandom        random) 
         throws InvalidKeyException
     {
         try
@@ -1159,67 +1138,40 @@ public class BaseBlockCipher
         cipher.updateAAD(input, offset, length);
     }
 
-    protected void engineUpdateAAD(ByteBuffer src)
+    protected void engineUpdateAAD(ByteBuffer bytebuffer)
     {
-        int remaining = src.remaining();
-        if (remaining < 1)
-        {
-            // No data to update
-        }
-        else if (src.hasArray())
-        {
-            engineUpdateAAD(src.array(), src.arrayOffset() + src.position(), remaining);
-            src.position(src.limit());
-        }
-        else if (remaining <= BUF_SIZE)
-        {
-            byte[] data = new byte[remaining];
-            src.get(data);
-            engineUpdateAAD(data, 0, data.length);
-            Arrays.fill(data, (byte)0);
-        }
-        else
-        {
-            byte[] data = new byte[BUF_SIZE];
-            do
-            {
-                int length = Math.min(data.length, remaining);
-                src.get(data, 0, length);
-                engineUpdateAAD(data, 0, length);
-                remaining -= length;
-            }
-            while (remaining > 0);
-            Arrays.fill(data, (byte)0);
-        }
+        int offset = bytebuffer.arrayOffset() + bytebuffer.position();
+        int length = bytebuffer.limit() - bytebuffer.position();
+        engineUpdateAAD(bytebuffer.array(), offset, length);
     }
 
     protected byte[] engineUpdate(
-        byte[] input,
-        int inputOffset,
-        int inputLen)
+        byte[]  input,
+        int     inputOffset,
+        int     inputLen) 
     {
-        int length = cipher.getUpdateOutputSize(inputLen);
+        int     length = cipher.getUpdateOutputSize(inputLen);
 
         if (length > 0)
         {
-            byte[] out = new byte[length];
+                byte[]  out = new byte[length];
 
-            int len = cipher.processBytes(input, inputOffset, inputLen, out, 0);
+                int len = cipher.processBytes(input, inputOffset, inputLen, out, 0);
 
-            if (len == 0)
-            {
-                return null;
-            }
-            else if (len != out.length)
-            {
-                byte[] tmp = new byte[len];
+                if (len == 0)
+                {
+                    return null;
+                }
+                else if (len != out.length)
+                {
+                    byte[]  tmp = new byte[len];
 
-                System.arraycopy(out, 0, tmp, 0, len);
+                    System.arraycopy(out, 0, tmp, 0, len);
 
-                return tmp;
-            }
+                    return tmp;
+                }
 
-            return out;
+                return out;
         }
 
         cipher.processBytes(input, inputOffset, inputLen, null, 0);
@@ -1228,11 +1180,11 @@ public class BaseBlockCipher
     }
 
     protected int engineUpdate(
-        byte[] input,
-        int inputOffset,
-        int inputLen,
-        byte[] output,
-        int outputOffset)
+        byte[]  input,
+        int     inputOffset,
+        int     inputLen,
+        byte[]  output,
+        int     outputOffset)
         throws ShortBufferException
     {
         if (outputOffset + cipher.getUpdateOutputSize(inputLen) > output.length)
@@ -1252,13 +1204,13 @@ public class BaseBlockCipher
     }
 
     protected byte[] engineDoFinal(
-        byte[] input,
-        int inputOffset,
-        int inputLen)
+        byte[]  input,
+        int     inputOffset,
+        int     inputLen) 
         throws IllegalBlockSizeException, BadPaddingException
     {
-        int len = 0;
-        byte[] tmp = new byte[engineGetOutputSize(inputLen)];
+        int     len = 0;
+        byte[]  tmp = new byte[engineGetOutputSize(inputLen)];
 
         if (inputLen != 0)
         {
@@ -1279,12 +1231,7 @@ public class BaseBlockCipher
             return tmp;
         }
 
-        if (len > tmp.length)
-        {
-            throw new IllegalBlockSizeException("internal buffer overflow");
-        }
-
-        byte[] out = new byte[len];
+        byte[]  out = new byte[len];
 
         System.arraycopy(tmp, 0, out, 0, len);
 
@@ -1292,14 +1239,14 @@ public class BaseBlockCipher
     }
 
     protected int engineDoFinal(
-        byte[] input,
-        int inputOffset,
-        int inputLen,
-        byte[] output,
-        int outputOffset)
+        byte[]  input,
+        int     inputOffset,
+        int     inputLen,
+        byte[]  output,
+        int     outputOffset)
         throws IllegalBlockSizeException, BadPaddingException, ShortBufferException
     {
-        int len = 0;
+        int     len = 0;
 
         if (outputOffset + engineGetOutputSize(inputLen) > output.length)
         {
@@ -1421,20 +1368,17 @@ public class BaseBlockCipher
             throw new UnsupportedOperationException("AAD is not supported in the current mode.");
         }
 
-        public int processByte(byte in, byte[] out, int outOff)
-            throws DataLengthException
+        public int processByte(byte in, byte[] out, int outOff) throws DataLengthException
         {
             return cipher.processByte(in, out, outOff);
         }
 
-        public int processBytes(byte[] in, int inOff, int len, byte[] out, int outOff)
-            throws DataLengthException
+        public int processBytes(byte[] in, int inOff, int len, byte[] out, int outOff) throws DataLengthException
         {
             return cipher.processBytes(in, inOff, len, out, outOff);
         }
 
-        public int doFinal(byte[] out, int outOff)
-            throws IllegalStateException, BadPaddingException
+        public int doFinal(byte[] out, int outOff) throws IllegalStateException, BadPaddingException
         {
             try
             {
@@ -1452,8 +1396,7 @@ public class BaseBlockCipher
     {
         private static final Constructor aeadBadTagConstructor;
 
-        static
-        {
+        static {
             Class aeadBadTagClass = ClassUtil.loadClass(BaseBlockCipher.class, "javax.crypto.AEADBadTagException");
             if (aeadBadTagClass != null)
             {
@@ -1477,9 +1420,9 @@ public class BaseBlockCipher
             }
         }
 
-        private AEADCipher cipher;
+        private AEADBlockCipher cipher;
 
-        AEADGenericBlockCipher(AEADCipher cipher)
+        AEADGenericBlockCipher(AEADBlockCipher cipher)
         {
             this.cipher = cipher;
         }
@@ -1492,12 +1435,7 @@ public class BaseBlockCipher
 
         public String getAlgorithmName()
         {
-            if (cipher instanceof AEADBlockCipher)
-            {
-                return ((AEADBlockCipher)cipher).getUnderlyingCipher().getAlgorithmName();
-            }
-
-            return cipher.getAlgorithmName();
+            return cipher.getUnderlyingCipher().getAlgorithmName();
         }
 
         public boolean wrapOnNoPadding()
@@ -1507,12 +1445,7 @@ public class BaseBlockCipher
 
         public org.bouncycastle.crypto.BlockCipher getUnderlyingCipher()
         {
-            if (cipher instanceof AEADBlockCipher)
-            {
-                return ((AEADBlockCipher)cipher).getUnderlyingCipher();
-            }
-
-            return null;
+            return cipher.getUnderlyingCipher();
         }
 
         public int getOutputSize(int len)
@@ -1530,20 +1463,17 @@ public class BaseBlockCipher
             cipher.processAADBytes(input, offset, length);
         }
 
-        public int processByte(byte in, byte[] out, int outOff)
-            throws DataLengthException
+        public int processByte(byte in, byte[] out, int outOff) throws DataLengthException
         {
             return cipher.processByte(in, out, outOff);
         }
 
-        public int processBytes(byte[] in, int inOff, int len, byte[] out, int outOff)
-            throws DataLengthException
+        public int processBytes(byte[] in, int inOff, int len, byte[] out, int outOff) throws DataLengthException
         {
             return cipher.processBytes(in, inOff, len, out, outOff);
         }
 
-        public int doFinal(byte[] out, int outOff)
-            throws IllegalStateException, BadPaddingException
+        public int doFinal(byte[] out, int outOff) throws IllegalStateException, BadPaddingException
         {
             try
             {
@@ -1557,7 +1487,7 @@ public class BaseBlockCipher
                     try
                     {
                         aeadBadTag = (BadPaddingException)aeadBadTagConstructor
-                            .newInstance(new Object[]{e.getMessage()});
+                                .newInstance(new Object[]{e.getMessage()});
                     }
                     catch (Exception i)
                     {

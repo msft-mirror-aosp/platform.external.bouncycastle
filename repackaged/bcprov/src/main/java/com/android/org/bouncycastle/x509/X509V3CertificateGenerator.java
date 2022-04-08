@@ -46,6 +46,7 @@ import com.android.org.bouncycastle.x509.extension.X509ExtensionUtil;
  *  @deprecated use org.bouncycastle.cert.X509v3CertificateBuilder.
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class X509V3CertificateGenerator
 {
     private final JcaJceHelper bcHelper = new BCJcaJceHelper(); // needed to force provider loading
@@ -58,6 +59,7 @@ public class X509V3CertificateGenerator
     private X509ExtensionsGenerator     extGenerator;
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public X509V3CertificateGenerator()
     {
         tbsGen = new V3TBSCertificateGenerator();
@@ -77,6 +79,7 @@ public class X509V3CertificateGenerator
      * set the serial number for the certificate.
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSerialNumber(
         BigInteger      serialNumber)
     {
@@ -93,6 +96,7 @@ public class X509V3CertificateGenerator
      * certificate.
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setIssuerDN(
         X500Principal   issuer)
     {
@@ -118,6 +122,7 @@ public class X509V3CertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setNotBefore(
         Date    date)
     {
@@ -125,6 +130,7 @@ public class X509V3CertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setNotAfter(
         Date    date)
     {
@@ -135,6 +141,7 @@ public class X509V3CertificateGenerator
      * Set the subject distinguished name. The subject describes the entity associated with the public key.
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSubjectDN(
         X500Principal   subject)
     {
@@ -159,6 +166,7 @@ public class X509V3CertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setPublicKey(
         PublicKey       key)
         throws IllegalArgumentException
@@ -181,6 +189,7 @@ public class X509V3CertificateGenerator
      * @param signatureAlgorithm string representation of the algorithm name.
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSignatureAlgorithm(
         String  signatureAlgorithm)
     {
@@ -423,6 +432,7 @@ public class X509V3CertificateGenerator
      * </p>
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public X509Certificate generate(
         PrivateKey      key)
         throws CertificateEncodingException, IllegalStateException, NoSuchAlgorithmException, SignatureException, InvalidKeyException

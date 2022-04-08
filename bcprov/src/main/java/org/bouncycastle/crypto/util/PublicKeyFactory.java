@@ -65,8 +65,6 @@ import org.bouncycastle.crypto.params.RSAKeyParameters;
 // import org.bouncycastle.crypto.params.X25519PublicKeyParameters;
 // import org.bouncycastle.crypto.params.X448PublicKeyParameters;
 import org.bouncycastle.math.ec.ECCurve;
-import org.bouncycastle.math.ec.ECPoint;
-import org.bouncycastle.util.Arrays;
 
 /**
  * Factory to create asymmetric public key parameters for asymmetric ciphers from range of
@@ -153,15 +151,17 @@ public class PublicKeyFactory
     public static AsymmetricKeyParameter createKey(SubjectPublicKeyInfo keyInfo, Object defaultParams)
         throws IOException
     {
-        AlgorithmIdentifier algID = keyInfo.getAlgorithm();
+        AlgorithmIdentifier algId = keyInfo.getAlgorithm();
+        SubjectPublicKeyInfoConverter converter = (SubjectPublicKeyInfoConverter)converters.get(algId.getAlgorithm());
 
-        SubjectPublicKeyInfoConverter converter = (SubjectPublicKeyInfoConverter)converters.get(algID.getAlgorithm());
-        if (null == converter)
+        if (converter != null)
         {
-            throw new IOException("algorithm identifier in public key not recognised: " + algID.getAlgorithm());
+            return converter.getPublicKeyParameters(keyInfo, defaultParams);
         }
-
-        return converter.getPublicKeyParameters(keyInfo, defaultParams);
+        else
+        {
+            throw new IOException("algorithm identifier in public key not recognised: " + algId.getAlgorithm());
+        }
     }
 
     private static abstract class SubjectPublicKeyInfoConverter
@@ -292,7 +292,8 @@ public class PublicKeyFactory
                 {
                     x9 = ECNamedCurveTable.getByOID(oid);
                 }
-                dParams = new ECNamedDomainParameters(oid, x9);
+                dParams = new ECNamedDomainParameters(
+                    oid, x9.getCurve(), x9.getG(), x9.getN(), x9.getH(), x9.getSeed());
             }
             else if (params.isImplicitlyCA())
             {
@@ -301,7 +302,8 @@ public class PublicKeyFactory
             else
             {
                 X9ECParameters x9 = X9ECParameters.getInstance(params.getParameters());
-                dParams = new ECDomainParameters(x9);
+                dParams = new ECDomainParameters(
+                    x9.getCurve(), x9.getG(), x9.getN(), x9.getH(), x9.getSeed());
             }
 
             DERBitString bits = keyInfo.getPublicKeyData();
@@ -342,47 +344,40 @@ public class PublicKeyFactory
     {
         AsymmetricKeyParameter getPublicKeyParameters(SubjectPublicKeyInfo keyInfo, Object defaultParams)
         {
-            AlgorithmIdentifier algID = keyInfo.getAlgorithm();
-//            ASN1ObjectIdentifier algOid = algID.getAlgorithm();
-            GOST3410PublicKeyAlgParameters gostParams = GOST3410PublicKeyAlgParameters.getInstance(algID.getParameters());
-            ASN1ObjectIdentifier publicKeyParamSet = gostParams.getPublicKeyParamSet();
-
-            ECGOST3410Parameters ecDomainParameters = new ECGOST3410Parameters(
-                new ECNamedDomainParameters(publicKeyParamSet, ECGOST3410NamedCurves.getByOIDX9(publicKeyParamSet)),
-                publicKeyParamSet,
-                gostParams.getDigestParamSet(),
-                gostParams.getEncryptionParamSet());
-
+            DERBitString bits = keyInfo.getPublicKeyData();
             ASN1OctetString key;
+
             try
             {
-                key = (ASN1OctetString)keyInfo.parsePublicKey();
+                key = (ASN1OctetString)ASN1Primitive.fromByteArray(bits.getBytes());
             }
             catch (IOException ex)
             {
-                throw new IllegalArgumentException("error recovering GOST3410_2001 public key");
+                throw new IllegalArgumentException("error recovering public key");
             }
-
-            int fieldSize = 32;
-            int keySize = 2 * fieldSize;
 
             byte[] keyEnc = key.getOctets();
-            if (keyEnc.length != keySize)
-            {
-                throw new IllegalArgumentException("invalid length for GOST3410_2001 public key");
-            }
 
-            byte[] x9Encoding = new byte[1 + keySize];
+            byte[] x9Encoding = new byte[65];
             x9Encoding[0] = 0x04;
-            for (int i = 1; i <= fieldSize; ++i)
+            for (int i = 1; i <= 32; ++i)
             {
-                x9Encoding[i] = keyEnc[fieldSize - i];
-                x9Encoding[i + fieldSize] = keyEnc[keySize - i];
+                x9Encoding[i] = keyEnc[32 - i];
+                x9Encoding[i + 32] = keyEnc[64 - i];
             }
 
-            ECPoint q = ecDomainParameters.getCurve().decodePoint(x9Encoding);
+            GOST3410PublicKeyAlgParameters gostParams = GOST3410PublicKeyAlgParameters.getInstance(keyInfo.getAlgorithm().getParameters());
 
-            return new ECPublicKeyParameters(q, ecDomainParameters);
+            ECGOST3410Parameters ecDomainParameters =
+                new ECGOST3410Parameters(
+                    new ECNamedDomainParameters(gostParams.getPublicKeyParamSet(), ECGOST3410NamedCurves.getByOID(gostParams.getPublicKeyParamSet())),
+                    gostParams.getPublicKeyParamSet(),
+                    gostParams.getDigestParamSet(),
+                    gostParams.getEncryptionParamSet());
+
+
+            return new ECPublicKeyParameters(ecDomainParameters.getCurve().decodePoint(x9Encoding), ecDomainParameters);
+
         }
     }
 
@@ -391,39 +386,28 @@ public class PublicKeyFactory
     {
         AsymmetricKeyParameter getPublicKeyParameters(SubjectPublicKeyInfo keyInfo, Object defaultParams)
         {
-            AlgorithmIdentifier algID = keyInfo.getAlgorithm();
-            ASN1ObjectIdentifier algOid = algID.getAlgorithm();
-            GOST3410PublicKeyAlgParameters gostParams = GOST3410PublicKeyAlgParameters.getInstance(algID.getParameters());
-            ASN1ObjectIdentifier publicKeyParamSet = gostParams.getPublicKeyParamSet();
-
-            ECGOST3410Parameters ecDomainParameters = new ECGOST3410Parameters(
-                new ECNamedDomainParameters(publicKeyParamSet, ECGOST3410NamedCurves.getByOIDX9(publicKeyParamSet)),
-                publicKeyParamSet,
-                gostParams.getDigestParamSet(),
-                gostParams.getEncryptionParamSet());
-
+            ASN1ObjectIdentifier algOid = keyInfo.getAlgorithm().getAlgorithm();
+            DERBitString bits = keyInfo.getPublicKeyData();
             ASN1OctetString key;
+
             try
             {
-                key = (ASN1OctetString)keyInfo.parsePublicKey();
+                key = (ASN1OctetString)ASN1Primitive.fromByteArray(bits.getBytes());
             }
             catch (IOException ex)
             {
-                throw new IllegalArgumentException("error recovering GOST3410_2012 public key");
+                throw new IllegalArgumentException("error recovering public key");
             }
+
+            byte[] keyEnc = key.getOctets();
 
             int fieldSize = 32;
             if (algOid.equals(RosstandartObjectIdentifiers.id_tc26_gost_3410_12_512))
             {
                 fieldSize = 64;
             }
-            int keySize = 2 * fieldSize;
 
-            byte[] keyEnc = key.getOctets();
-            if (keyEnc.length != keySize)
-            {
-                throw new IllegalArgumentException("invalid length for GOST3410_2012 public key");
-            }
+            int keySize = 2 * fieldSize;
 
             byte[] x9Encoding = new byte[1 + keySize];
             x9Encoding[0] = 0x04;
@@ -433,9 +417,17 @@ public class PublicKeyFactory
                 x9Encoding[i + fieldSize] = keyEnc[keySize - i];
             }
 
-            ECPoint q = ecDomainParameters.getCurve().decodePoint(x9Encoding);
+            GOST3410PublicKeyAlgParameters gostParams = GOST3410PublicKeyAlgParameters.getInstance(keyInfo.getAlgorithm().getParameters());
 
-            return new ECPublicKeyParameters(q, ecDomainParameters);
+            ECGOST3410Parameters ecDomainParameters =
+                new ECGOST3410Parameters(
+                    new ECNamedDomainParameters(gostParams.getPublicKeyParamSet(), ECGOST3410NamedCurves.getByOID(gostParams.getPublicKeyParamSet())),
+                    gostParams.getPublicKeyParamSet(),
+                    gostParams.getDigestParamSet(),
+                    gostParams.getEncryptionParamSet());
+
+
+            return new ECPublicKeyParameters(ecDomainParameters.getCurve().decodePoint(x9Encoding), ecDomainParameters);
         }
     }
 
@@ -445,55 +437,53 @@ public class PublicKeyFactory
         AsymmetricKeyParameter getPublicKeyParameters(SubjectPublicKeyInfo keyInfo, Object defaultParams)
             throws IOException
         {
-            AlgorithmIdentifier algID = keyInfo.getAlgorithm();
-            ASN1ObjectIdentifier algOid = algID.getAlgorithm();
-            DSTU4145Params dstuParams = DSTU4145Params.getInstance(algID.getParameters());
-
+            DERBitString bits = keyInfo.getPublicKeyData();
             ASN1OctetString key;
+
             try
             {
-                key = (ASN1OctetString)keyInfo.parsePublicKey();
+                key = (ASN1OctetString)ASN1Primitive.fromByteArray(bits.getBytes());
             }
             catch (IOException ex)
             {
-                throw new IllegalArgumentException("error recovering DSTU public key");
+                throw new IllegalArgumentException("error recovering public key");
             }
 
-            byte[] keyEnc = Arrays.clone(key.getOctets());
+            byte[] keyEnc = key.getOctets();
 
-            if (algOid.equals(UAObjectIdentifiers.dstu4145le))
+            if (keyInfo.getAlgorithm().getAlgorithm().equals(UAObjectIdentifiers.dstu4145le))
             {
                 reverseBytes(keyEnc);
             }
 
+            DSTU4145Params dstuParams = DSTU4145Params.getInstance(keyInfo.getAlgorithm().getParameters());
+
             ECDomainParameters ecDomain;
             if (dstuParams.isNamedCurve())
             {
-                ecDomain = DSTU4145NamedCurves.getByOID(dstuParams.getNamedCurve());
+                ASN1ObjectIdentifier curveOid = dstuParams.getNamedCurve();
+
+                ecDomain = DSTU4145NamedCurves.getByOID(curveOid);
             }
             else
             {
                 DSTU4145ECBinary binary = dstuParams.getECBinary();
                 byte[] b_bytes = binary.getB();
-                if (algOid.equals(UAObjectIdentifiers.dstu4145le))
+                if (keyInfo.getAlgorithm().getAlgorithm().equals(UAObjectIdentifiers.dstu4145le))
                 {
                     reverseBytes(b_bytes);
                 }
-                BigInteger b = new BigInteger(1, b_bytes);
                 DSTU4145BinaryField field = binary.getField();
-                ECCurve curve = new ECCurve.F2m(field.getM(), field.getK1(), field.getK2(), field.getK3(), binary.getA(), b);
+                ECCurve curve = new ECCurve.F2m(field.getM(), field.getK1(), field.getK2(), field.getK3(), binary.getA(), new BigInteger(1, b_bytes));
                 byte[] g_bytes = binary.getG();
-                if (algOid.equals(UAObjectIdentifiers.dstu4145le))
+                if (keyInfo.getAlgorithm().getAlgorithm().equals(UAObjectIdentifiers.dstu4145le))
                 {
                     reverseBytes(g_bytes);
                 }
-                ECPoint g = DSTU4145PointEncoder.decodePoint(curve, g_bytes);
-                ecDomain = new ECDomainParameters(curve, g, binary.getN());
+                ecDomain = new ECDomainParameters(curve, DSTU4145PointEncoder.decodePoint(curve, g_bytes), binary.getN());
             }
 
-            ECPoint q = DSTU4145PointEncoder.decodePoint(ecDomain.getCurve(), keyEnc);
-
-            return new ECPublicKeyParameters(q, ecDomain);
+            return new ECPublicKeyParameters(DSTU4145PointEncoder.decodePoint(ecDomain.getCurve(), keyEnc), ecDomain);
         }
 
         private void reverseBytes(byte[] bytes)

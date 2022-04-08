@@ -28,6 +28,7 @@ import com.android.org.bouncycastle.asn1.x500.X500Name;
  * @hide This class is not part of the Android public SDK API
  *
  */
+@libcore.api.CorePlatformApi
 public class V3TBSCertificateGenerator
 {
     DERTaggedObject         version = new DERTaggedObject(true, 0, new ASN1Integer(2));
@@ -45,11 +46,13 @@ public class V3TBSCertificateGenerator
     private DERBitString subjectUniqueID;
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public V3TBSCertificateGenerator()
     {
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSerialNumber(
         ASN1Integer  serialNumber)
     {
@@ -57,6 +60,7 @@ public class V3TBSCertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSignature(
         AlgorithmIdentifier    signature)
     {
@@ -67,6 +71,7 @@ public class V3TBSCertificateGenerator
      * @deprecated use X500Name method
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setIssuer(
         X509Name    issuer)
     {
@@ -86,6 +91,7 @@ public class V3TBSCertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setStartDate(
         Time startDate)
     {
@@ -99,6 +105,7 @@ public class V3TBSCertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setEndDate(
         Time endDate)
     {
@@ -109,6 +116,7 @@ public class V3TBSCertificateGenerator
      * @deprecated use X500Name method
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSubject(
         X509Name    subject)
     {
@@ -134,6 +142,7 @@ public class V3TBSCertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public void setSubjectPublicKeyInfo(
         SubjectPublicKeyInfo    pubKeyInfo)
     {
@@ -166,6 +175,7 @@ public class V3TBSCertificateGenerator
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public TBSCertificate generateTBSCertificate()
     {
         if ((serialNumber == null) || (signature == null)
@@ -175,7 +185,7 @@ public class V3TBSCertificateGenerator
             throw new IllegalStateException("not all mandatory fields set in V3 TBScertificate generator");
         }
 
-        ASN1EncodableVector v = new ASN1EncodableVector(10);
+        ASN1EncodableVector  v = new ASN1EncodableVector();
 
         v.add(version);
         v.add(serialNumber);
@@ -185,13 +195,12 @@ public class V3TBSCertificateGenerator
         //
         // before and after dates
         //
-        {
-            ASN1EncodableVector validity = new ASN1EncodableVector(2);
-            validity.add(startDate);
-            validity.add(endDate);
+        ASN1EncodableVector  validity = new ASN1EncodableVector();
 
-            v.add(new DERSequence(validity));
-        }
+        validity.add(startDate);
+        validity.add(endDate);
+
+        v.add(new DERSequence(validity));
 
         if (subject != null)
         {

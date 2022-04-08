@@ -36,9 +36,8 @@ class X509CRLEntryObject extends X509CRLEntry
     private TBSCertList.CRLEntry c;
 
     private X500Name certificateIssuer;
-
-    private volatile boolean            hashValueSet;
-    private volatile int                hashValue;
+    private int           hashValue;
+    private boolean       isHashValueSet;
 
     protected X509CRLEntryObject(TBSCertList.CRLEntry c)
     {
@@ -203,35 +202,27 @@ class X509CRLEntryObject extends X509CRLEntry
      */
     public int hashCode()
     {
-        if (!hashValueSet)
+        if (!isHashValueSet)
         {
             hashValue = super.hashCode();
-            hashValueSet = true;
+            isHashValueSet = true;
         }
 
         return hashValue;
     }
 
-    public boolean equals(Object other)
+    public boolean equals(Object o)
     {
-        if (other == this)
+        if (o == this)
         {
             return true;
         }
 
-        if (other instanceof X509CRLEntryObject)
+        if (o instanceof X509CRLEntryObject)
         {
-            X509CRLEntryObject otherBC = (X509CRLEntryObject)other;
+            X509CRLEntryObject other = (X509CRLEntryObject)o;
 
-            if (this.hashValueSet && otherBC.hashValueSet)
-            {
-                if (this.hashValue != otherBC.hashValue)
-                {
-                    return false;
-                }
-            }
-
-            return this.c.equals(otherBC.c);
+            return this.c.equals(other.c);
         }
 
         return super.equals(this);

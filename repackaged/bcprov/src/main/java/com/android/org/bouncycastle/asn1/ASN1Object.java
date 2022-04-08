@@ -3,7 +3,6 @@ package com.android.org.bouncycastle.asn1;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import com.android.org.bouncycastle.util.Encodable;
 
@@ -11,20 +10,12 @@ import com.android.org.bouncycastle.util.Encodable;
  * Base class for defining an ASN.1 object.
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public abstract class ASN1Object
     implements ASN1Encodable, Encodable
 {
+    @libcore.api.CorePlatformApi
     public ASN1Object() {
-    }
-
-    public void encodeTo(OutputStream output) throws IOException
-    {
-        ASN1OutputStream.create(output).writeObject(this);
-    }
-
-    public void encodeTo(OutputStream output, String encoding) throws IOException
-    {
-        ASN1OutputStream.create(output, encoding).writeObject(this);
     }
 
     /**
@@ -33,10 +24,15 @@ public abstract class ASN1Object
      * @return BER/DER byte encoded object.
      * @throws java.io.IOException on encoding error.
      */
-    public byte[] getEncoded() throws IOException
+    @libcore.api.CorePlatformApi
+    public byte[] getEncoded()
+        throws IOException
     {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-        encodeTo(bOut);
+        ASN1OutputStream      aOut = new ASN1OutputStream(bOut);
+
+        aOut.writeObject(this);
+
         return bOut.toByteArray();
     }
 
@@ -47,11 +43,31 @@ public abstract class ASN1Object
      * @return byte encoded object.
      * @throws IOException on encoding error.
      */
-    public byte[] getEncoded(String encoding) throws IOException
+    @libcore.api.CorePlatformApi
+    public byte[] getEncoded(
+        String encoding)
+        throws IOException
     {
-        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-        encodeTo(bOut, encoding);
-        return bOut.toByteArray();
+        if (encoding.equals(ASN1Encoding.DER))
+        {
+            ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
+            DEROutputStream         dOut = new DEROutputStream(bOut);
+
+            dOut.writeObject(this);
+
+            return bOut.toByteArray();
+        }
+        else if (encoding.equals(ASN1Encoding.DL))
+        {
+            ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
+            DLOutputStream          dOut = new DLOutputStream(bOut);
+
+            dOut.writeObject(this);
+
+            return bOut.toByteArray();
+        }
+
+        return this.getEncoded();
     }
 
     public int hashCode()
@@ -77,8 +93,6 @@ public abstract class ASN1Object
         return this.toASN1Primitive().equals(other.toASN1Primitive());
     }
 
-    // BEGIN Android-changed: Was removed in upstream.
-    // Used by https://source.corp.google.com/android/cts/tests/tests/keystore/src/android/keystore/cts/KeyAttestationTest.java
     /**
      * @deprecated use toASN1Primitive()
      * @return the underlying primitive type.
@@ -87,7 +101,6 @@ public abstract class ASN1Object
     {
         return this.toASN1Primitive();
     }
-    // END Android-changed
 
     /**
      * Return true if obj is a byte array and represents an object with the given tag value.

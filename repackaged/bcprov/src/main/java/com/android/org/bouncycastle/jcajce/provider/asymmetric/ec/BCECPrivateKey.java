@@ -7,6 +7,7 @@ import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.security.interfaces.ECPrivateKey;
 import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
 import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.EllipticCurve;
 import java.util.Enumeration;
@@ -301,14 +302,14 @@ public class BCECPrivateKey
             return null;
         }
         
-        return EC5Util.convertSpec(ecSpec);
+        return EC5Util.convertSpec(ecSpec, withCompression);
     }
 
     com.android.org.bouncycastle.jce.spec.ECParameterSpec engineGetSpec()
     {
         if (ecSpec != null)
         {
-            return EC5Util.convertSpec(ecSpec);
+            return EC5Util.convertSpec(ecSpec, withCompression);
         }
 
         return configuration.getEcImplicitlyCa();
@@ -367,6 +368,11 @@ public class BCECPrivateKey
     public String toString()
     {
         return ECUtil.privateKeyToString("EC", d, engineGetSpec());
+    }
+
+    private com.android.org.bouncycastle.math.ec.ECPoint calculateQ(com.android.org.bouncycastle.jce.spec.ECParameterSpec spec)
+    {
+        return spec.getG().multiply(d).normalize();
     }
 
     private DERBitString getPublicKeyDetails(BCECPublicKey pub)

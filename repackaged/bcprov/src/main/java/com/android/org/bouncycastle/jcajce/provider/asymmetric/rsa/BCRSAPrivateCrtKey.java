@@ -2,18 +2,17 @@
 package com.android.org.bouncycastle.jcajce.provider.asymmetric.rsa;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.RSAPrivateCrtKeySpec;
 
+import com.android.org.bouncycastle.asn1.DERNull;
+import com.android.org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import com.android.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import com.android.org.bouncycastle.asn1.pkcs.RSAPrivateKey;
 import com.android.org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import com.android.org.bouncycastle.crypto.params.RSAPrivateCrtKeyParameters;
 import com.android.org.bouncycastle.jcajce.provider.asymmetric.util.KeyUtil;
-import com.android.org.bouncycastle.jcajce.provider.asymmetric.util.PKCS12BagAttributeCarrierImpl;
 import com.android.org.bouncycastle.util.Strings;
 
 /**
@@ -51,20 +50,6 @@ public class BCRSAPrivateCrtKey
         this.crtCoefficient = key.getQInv();
     }
 
-    BCRSAPrivateCrtKey(
-        AlgorithmIdentifier algorithmIdentifier,
-        RSAPrivateCrtKeyParameters key)
-    {
-        super(algorithmIdentifier, key);
-        
-        this.publicExponent = key.getPublicExponent();
-        this.primeP = key.getP();
-        this.primeQ = key.getQ();
-        this.primeExponentP = key.getDP();
-        this.primeExponentQ = key.getDQ();
-        this.crtCoefficient = key.getQInv();
-    }
-
     /**
      * construct a private key from an RSAPrivateCrtKeySpec
      *
@@ -73,10 +58,6 @@ public class BCRSAPrivateCrtKey
     BCRSAPrivateCrtKey(
         RSAPrivateCrtKeySpec spec)
     {
-        super(new RSAPrivateCrtKeyParameters(spec.getModulus(),
-                                spec.getPublicExponent(), spec.getPrivateExponent(),
-                                spec.getPrimeP(), spec.getPrimeQ(), spec.getPrimeExponentP(), spec.getPrimeExponentQ(), spec.getCrtCoefficient()));
-
         this.modulus = spec.getModulus();
         this.publicExponent = spec.getPublicExponent();
         this.privateExponent = spec.getPrivateExponent();
@@ -95,10 +76,6 @@ public class BCRSAPrivateCrtKey
     BCRSAPrivateCrtKey(
         RSAPrivateCrtKey key)
     {
-        super(new RSAPrivateCrtKeyParameters(key.getModulus(),
-                                key.getPublicExponent(), key.getPrivateExponent(),
-                                key.getPrimeP(), key.getPrimeQ(), key.getPrimeExponentP(), key.getPrimeExponentQ(), key.getCrtCoefficient()));
-
         this.modulus = key.getModulus();
         this.publicExponent = key.getPublicExponent();
         this.privateExponent = key.getPrivateExponent();
@@ -116,7 +93,7 @@ public class BCRSAPrivateCrtKey
         PrivateKeyInfo info)
         throws IOException
     {
-        this(info.getPrivateKeyAlgorithm(), RSAPrivateKey.getInstance(info.parsePrivateKey()));
+        this(RSAPrivateKey.getInstance(info.parsePrivateKey()));
     }
 
     /**
@@ -125,17 +102,6 @@ public class BCRSAPrivateCrtKey
     BCRSAPrivateCrtKey(
         RSAPrivateKey key)
     {
-        this(BCRSAPublicKey.DEFAULT_ALGORITHM_IDENTIFIER, key);
-    }
-
-    BCRSAPrivateCrtKey(
-        AlgorithmIdentifier algorithmIdentifier,
-        RSAPrivateKey key)
-    {
-        super(algorithmIdentifier, new RSAPrivateCrtKeyParameters(key.getModulus(),
-                                key.getPublicExponent(), key.getPrivateExponent(),
-                                key.getPrime1(), key.getPrime2(), key.getExponent1(), key.getExponent2(), key.getCoefficient()));
-
         this.modulus = key.getModulus();
         this.publicExponent = key.getPublicExponent();
         this.privateExponent = key.getPrivateExponent();
@@ -164,7 +130,7 @@ public class BCRSAPrivateCrtKey
      */
     public byte[] getEncoded()
     {
-        return KeyUtil.getEncodedPrivateKeyInfo(algorithmIdentifier, new RSAPrivateKey(getModulus(), getPublicExponent(), getPrivateExponent(), getPrimeP(), getPrimeQ(), getPrimeExponentP(), getPrimeExponentQ(), getCrtCoefficient()));
+        return KeyUtil.getEncodedPrivateKeyInfo(new AlgorithmIdentifier(PKCSObjectIdentifiers.rsaEncryption, DERNull.INSTANCE), new RSAPrivateKey(getModulus(), getPublicExponent(), getPrivateExponent(), getPrimeP(), getPrimeQ(), getPrimeExponentP(), getPrimeExponentQ(), getCrtCoefficient()));
     }
 
     /**
@@ -256,26 +222,6 @@ public class BCRSAPrivateCrtKey
          && this.getPrimeExponentP().equals(key.getPrimeExponentP())
          && this.getPrimeExponentQ().equals(key.getPrimeExponentQ())
          && this.getCrtCoefficient().equals(key.getCrtCoefficient());
-    }
-
-    private void readObject(
-        ObjectInputStream in)
-        throws IOException, ClassNotFoundException
-    {
-        in.defaultReadObject();
-
-        this.attrCarrier = new PKCS12BagAttributeCarrierImpl();
-        this.rsaPrivateKey = new RSAPrivateCrtKeyParameters(this.getModulus(),
-                                        this.getPublicExponent(), this.getPrivateExponent(),
-                                        this.getPrimeP(), this.getPrimeQ(),
-                                        this.getPrimeExponentP(), this.getPrimeExponentQ(), this.getCrtCoefficient());
-    }
-
-    private void writeObject(
-        ObjectOutputStream out)
-        throws IOException
-    {
-        out.defaultWriteObject();
     }
 
     public String toString()

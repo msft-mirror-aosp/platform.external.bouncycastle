@@ -8,15 +8,13 @@ import com.android.org.bouncycastle.math.raw.Mod;
 import com.android.org.bouncycastle.math.raw.Nat;
 import com.android.org.bouncycastle.math.raw.Nat224;
 import com.android.org.bouncycastle.util.Arrays;
-import com.android.org.bouncycastle.util.encoders.Hex;
 
 /**
  * @hide This class is not part of the Android public SDK API
  */
 public class SecP224R1FieldElement extends ECFieldElement.AbstractFp
 {
-    public static final BigInteger Q = new BigInteger(1,
-        Hex.decodeStrict("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000000001"));
+    public static final BigInteger Q = SecP224R1Curve.q;
 
     protected int[] x;
 
@@ -102,7 +100,7 @@ public class SecP224R1FieldElement extends ECFieldElement.AbstractFp
     {
 //        return multiply(b.invert());
         int[] z = Nat224.create();
-        SecP224R1Field.inv(((SecP224R1FieldElement)b).x, z);
+        Mod.invert(SecP224R1Field.P, ((SecP224R1FieldElement)b).x, z);
         SecP224R1Field.multiply(z, x, z);
         return new SecP224R1FieldElement(z);
     }
@@ -125,7 +123,7 @@ public class SecP224R1FieldElement extends ECFieldElement.AbstractFp
     {
 //        return new SecP224R1FieldElement(toBigInteger().modInverse(Q));
         int[] z = Nat224.create();
-        SecP224R1Field.inv(x, z);
+        Mod.invert(SecP224R1Field.P, x, z);
         return new SecP224R1FieldElement(z);
     }
 
@@ -268,7 +266,7 @@ public class SecP224R1FieldElement extends ECFieldElement.AbstractFp
 
             if (Nat224.isZero(d1))
             {
-                SecP224R1Field.inv(e0, t);
+                Mod.invert(SecP224R1Field.P, e0, t);
                 SecP224R1Field.multiply(t, d0, t);
                 return true;
             }

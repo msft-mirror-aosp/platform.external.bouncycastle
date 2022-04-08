@@ -52,8 +52,6 @@ import com.android.org.bouncycastle.crypto.macs.HMac;
 // Android-changed: Use default provider for JCA algorithms instead of BC
 // Was: import org.bouncycastle.jcajce.util.BCJcaJceHelper;
 import com.android.org.bouncycastle.jcajce.util.DefaultJcaJceHelper;
-// import org.bouncycastle.jcajce.io.CipherInputStream;
-// import org.bouncycastle.jcajce.io.CipherOutputStream;
 import com.android.org.bouncycastle.jcajce.util.JcaJceHelper;
 import com.android.org.bouncycastle.jce.interfaces.BCKeyStore;
 import com.android.org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -151,6 +149,7 @@ public class BcKeyStoreSpi
 
             byte[] salt = new byte[KEY_SALT_SIZE];
 
+            random.setSeed(System.currentTimeMillis());
             random.nextBytes(salt);
 
             int iterationCount = MIN_ITERATIONS + (random.nextInt() & 0x3ff);
@@ -687,7 +686,7 @@ public class BcKeyStoreSpi
         }
         catch (Exception e)
         {
-            throw new BCKeyStoreException(e.toString(), e);
+            throw new KeyStoreException(e.toString());
         }
     }
 
@@ -1078,23 +1077,6 @@ public class BcKeyStoreSpi
         public Version1()
         {
             super(1);
-        }
-    }
-
-    private static class BCKeyStoreException
-        extends KeyStoreException
-    {
-        private final Exception cause;
-
-        public BCKeyStoreException(String msg, Exception cause)
-        {
-            super(msg);
-            this.cause = cause;
-        }
-
-        public Throwable getCause()
-        {
-            return cause;
         }
     }
 }

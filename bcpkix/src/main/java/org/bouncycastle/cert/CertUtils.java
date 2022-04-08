@@ -7,33 +7,29 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
-import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1GeneralizedTime;
-import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DERNull;
+import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.AttributeCertificate;
 import org.bouncycastle.asn1.x509.AttributeCertificateInfo;
 import org.bouncycastle.asn1.x509.Certificate;
 import org.bouncycastle.asn1.x509.CertificateList;
-import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.Extensions;
 import org.bouncycastle.asn1.x509.ExtensionsGenerator;
 import org.bouncycastle.asn1.x509.TBSCertList;
 import org.bouncycastle.asn1.x509.TBSCertificate;
 import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.util.Properties;
 
 class CertUtils
 {
@@ -51,7 +47,6 @@ class CertUtils
         }
         return p;
     }
-
 
     static X509CertificateHolder generateFullCert(ContentSigner signer, TBSCertificate tbsCert)
     {
@@ -89,11 +84,14 @@ class CertUtils
         }
     }
 
-    private static byte[] generateSig(ContentSigner signer, ASN1Object tbsObj)
+    private static byte[] generateSig(ContentSigner signer, ASN1Encodable tbsObj)
         throws IOException
     {
         OutputStream sOut = signer.getOutputStream();
-        tbsObj.encodeTo(sOut, ASN1Encoding.DER);
+        DEROutputStream dOut = new DEROutputStream(sOut);
+
+        dOut.writeObject(tbsObj);
+
         sOut.close();
 
         return signer.getSignature();
@@ -230,100 +228,30 @@ class CertUtils
     static boolean isAlgIdEqual(AlgorithmIdentifier id1, AlgorithmIdentifier id2)
     {
         if (!id1.getAlgorithm().equals(id2.getAlgorithm()))
-         {
-             return false;
-         }
-
-         if (Properties.isOverrideSet("org.bouncycastle.x509.allow_absent_equiv_NULL"))
-         {
-             if (id1.getParameters() == null)
-             {
-                 if (id2.getParameters() != null && !id2.getParameters().equals(DERNull.INSTANCE))
-                 {
-                     return false;
-                 }
-
-                 return true;
-             }
-
-             if (id2.getParameters() == null)
-             {
-                 if (id1.getParameters() != null && !id1.getParameters().equals(DERNull.INSTANCE))
-                 {
-                     return false;
-                 }
-
-                 return true;
-             }
-         }
-
-         if (id1.getParameters() != null)
-         {
-             return id1.getParameters().equals(id2.getParameters());
-         }
-
-         if (id2.getParameters() != null)
-         {
-             return id2.getParameters().equals(id1.getParameters());
-         }
-
-         return true;
-    }
-
-    static ExtensionsGenerator doReplaceExtension(ExtensionsGenerator extGenerator, Extension ext)
-    {
-        boolean isReplaced = false;
-        Extensions exts = extGenerator.generate();
-        extGenerator = new ExtensionsGenerator();
-
-        for (Enumeration en = exts.oids(); en.hasMoreElements();)
         {
-            ASN1ObjectIdentifier extOid = (ASN1ObjectIdentifier)en.nextElement();
-
-            if (extOid.equals(ext.getExtnId()))
-            {
-                isReplaced = true;
-                extGenerator.addExtension(ext);
-            }
-            else
-            {
-                extGenerator.addExtension(exts.getExtension(extOid));
-            }
+            return false;
         }
 
-        if (!isReplaced)
+        if (id1.getParameters() == null)
         {
-            throw new IllegalArgumentException("replace - original extension (OID = " + ext.getExtnId() + ") not found");
-        }
-
-        return extGenerator;
-    }
-
-    static ExtensionsGenerator doRemoveExtension(ExtensionsGenerator extGenerator, ASN1ObjectIdentifier  oid)
-    {
-        boolean isRemoved = false;
-        Extensions exts = extGenerator.generate();
-        extGenerator = new ExtensionsGenerator();
-
-        for (Enumeration en = exts.oids(); en.hasMoreElements();)
-        {
-            ASN1ObjectIdentifier extOid = (ASN1ObjectIdentifier)en.nextElement();
-
-            if (extOid.equals(oid))
+            if (id2.getParameters() != null && !id2.getParameters().equals(DERNull.INSTANCE))
             {
-                isRemoved = true;
+                return false;
             }
-            else
-            {
-                extGenerator.addExtension(exts.getExtension(extOid));
-            }
+
+            return true;
         }
 
-        if (!isRemoved)
+        if (id2.getParameters() == null)
         {
-            throw new IllegalArgumentException("remove - extension (OID = " + oid + ") not found");
+            if (id1.getParameters() != null && !id1.getParameters().equals(DERNull.INSTANCE))
+            {
+                return false;
+            }
+
+            return true;
         }
 
-        return extGenerator;
+        return id1.getParameters().equals(id2.getParameters());
     }
 }

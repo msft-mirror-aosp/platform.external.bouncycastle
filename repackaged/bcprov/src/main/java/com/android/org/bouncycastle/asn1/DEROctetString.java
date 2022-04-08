@@ -7,6 +7,7 @@ import java.io.IOException;
  * Carrier class for a DER encoding OCTET STRING
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class DEROctetString
     extends ASN1OctetString
 {
@@ -15,7 +16,8 @@ public class DEROctetString
      *
      * @param string the octets making up the octet string.
      */
-    @android.compat.annotation.UnsupportedAppUsage(maxTargetSdk = 30, trackingBug = 170729553)
+    @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public DEROctetString(
         byte[]  string)
     {
@@ -44,23 +46,18 @@ public class DEROctetString
         return 1 + StreamUtil.calculateBodyLength(string.length) + string.length;
     }
 
-    void encode(ASN1OutputStream out, boolean withTag) throws IOException
+    void encode(
+        ASN1OutputStream out)
+        throws IOException
     {
-        out.writeEncoded(withTag, BERTags.OCTET_STRING, string);
+        out.writeEncoded(BERTags.OCTET_STRING, string);
     }
 
-    ASN1Primitive toDERObject()
+    static void encode(
+        DEROutputStream derOut,
+        byte[]          bytes)
+        throws IOException
     {
-        return this;
-    }
-
-    ASN1Primitive toDLObject()
-    {
-        return this;
-    }
-
-    static void encode(ASN1OutputStream derOut, boolean withTag, byte[] buf, int off, int len) throws IOException
-    {
-        derOut.writeEncoded(withTag, BERTags.OCTET_STRING, buf, off, len);
+        derOut.writeEncoded(BERTags.OCTET_STRING, bytes);
     }
 }

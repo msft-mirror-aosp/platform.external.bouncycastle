@@ -12,7 +12,6 @@ import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.x9.ECNamedCurveTable;
 import org.bouncycastle.asn1.x9.X962Parameters;
 import org.bouncycastle.asn1.x9.X9ECParameters;
-import org.bouncycastle.asn1.x9.X9ECPoint;
 import org.bouncycastle.jcajce.provider.asymmetric.util.EC5Util;
 import org.bouncycastle.jcajce.provider.asymmetric.util.ECUtil;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -124,7 +123,7 @@ public class AlgorithmParametersSpi
             }
             else
             {
-                ASN1ObjectIdentifier namedCurveOid = ECUtil.getNamedCurveOid(EC5Util.convertSpec(ecParameterSpec));
+                ASN1ObjectIdentifier namedCurveOid = ECUtil.getNamedCurveOid(EC5Util.convertSpec(ecParameterSpec, false));
 
                 if (namedCurveOid != null)
                 {
@@ -160,10 +159,10 @@ public class AlgorithmParametersSpi
             }
             else
             {
-                org.bouncycastle.jce.spec.ECParameterSpec ecSpec = EC5Util.convertSpec(ecParameterSpec);
+                org.bouncycastle.jce.spec.ECParameterSpec ecSpec = EC5Util.convertSpec(ecParameterSpec, false);
                 X9ECParameters ecP = new X9ECParameters(
                     ecSpec.getCurve(),
-                    new X9ECPoint(ecSpec.getG(), false),
+                    ecSpec.getG(),
                     ecSpec.getN(),
                     ecSpec.getH(),
                     ecSpec.getSeed());
@@ -180,6 +179,6 @@ public class AlgorithmParametersSpi
     @Override
     protected String engineToString()
     {
-        return "EC Parameters";
+        return "EC AlgorithmParameters ";
     }
 }

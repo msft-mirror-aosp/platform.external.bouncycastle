@@ -42,7 +42,7 @@ public class SubjectKeyIdentifier
 
     public static SubjectKeyIdentifier fromExtensions(Extensions extensions)
     {
-        return getInstance(Extensions.getExtensionParsedValue(extensions, Extension.subjectKeyIdentifier));
+        return SubjectKeyIdentifier.getInstance(extensions.getExtensionParsedValue(Extension.subjectKeyIdentifier));
     }
 
     public SubjectKeyIdentifier(

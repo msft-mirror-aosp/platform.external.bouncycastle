@@ -7,6 +7,7 @@ import java.io.IOException;
  * A BIT STRING with DER encoding - the first byte contains the count of padding bits included in the byte array's last byte.
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class DERBitString
     extends ASN1BitString
 {
@@ -65,13 +66,24 @@ public class DERBitString
         }
         else
         {
-            return fromOctetString(ASN1OctetString.getInstance(o).getOctets());
+            return fromOctetString(((ASN1OctetString)o).getOctets());
         }
     }
-
-    protected DERBitString(byte data, int padBits)
+    
+    protected DERBitString(
+        byte    data,
+        int     padBits)
     {
-        super(data, padBits);
+        this(toByteArray(data), padBits);
+    }
+
+    private static byte[] toByteArray(byte data)
+    {
+        byte[] rv = new byte[1];
+
+        rv[0] = data;
+
+        return rv;
     }
 
     /**
@@ -86,6 +98,7 @@ public class DERBitString
     }
 
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public DERBitString(
         byte[]  data)
     {
@@ -115,30 +128,17 @@ public class DERBitString
         return 1 + StreamUtil.calculateBodyLength(data.length + 1) + data.length + 1;
     }
 
-    void encode(ASN1OutputStream out, boolean withTag) throws IOException
+    void encode(
+        ASN1OutputStream out)
+        throws IOException
     {
-        int len = data.length;
-        if (0 == len
-            || 0 == padBits
-            || (data[len - 1] == (byte)(data[len - 1] & (0xFF << padBits))))
-        {
-            out.writeEncoded(withTag, BERTags.BIT_STRING, (byte)padBits, data);
-        }
-        else
-        {
-            byte der = (byte)(data[len - 1] & (0xFF << padBits));
-            out.writeEncoded(withTag, BERTags.BIT_STRING, (byte)padBits, data, 0, len - 1, der);
-        }
-    }
+        byte[] string = derForm(data, padBits);
+        byte[] bytes = new byte[string.length + 1];
 
-    ASN1Primitive toDERObject()
-    {
-        return this;
-    }
+        bytes[0] = (byte)getPadBits();
+        System.arraycopy(string, 0, bytes, 1, bytes.length - 1);
 
-    ASN1Primitive toDLObject()
-    {
-        return this;
+        out.writeEncoded(BERTags.BIT_STRING, bytes);
     }
 
     static DERBitString fromOctetString(byte[] bytes)

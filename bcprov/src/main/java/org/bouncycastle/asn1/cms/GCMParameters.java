@@ -11,7 +11,7 @@ import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.util.Arrays;
 
 /**
- * <a href="https://tools.ietf.org/html/rfc5084">RFC 5084</a>: GCMParameters object.
+ * <a href="http://tools.ietf.org/html/rfc5084">RFC 5084</a>: GCMParameters object.
  * <p>
  * <pre>
  GCMParameters ::= SEQUENCE {
@@ -60,7 +60,7 @@ public class GCMParameters
 
         if (seq.size() == 2)
         {
-            this.icvLen = ASN1Integer.getInstance(seq.getObjectAt(1)).intValueExact();
+            this.icvLen = ASN1Integer.getInstance(seq.getObjectAt(1)).getValue().intValue();
         }
         else
         {
@@ -88,7 +88,7 @@ public class GCMParameters
 
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector v = new ASN1EncodableVector(2);
+        ASN1EncodableVector    v = new ASN1EncodableVector();
 
         v.add(new DEROctetString(nonce));
 

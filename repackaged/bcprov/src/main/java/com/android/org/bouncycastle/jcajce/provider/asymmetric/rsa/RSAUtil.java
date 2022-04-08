@@ -45,22 +45,13 @@ public class RSAUtil
     static RSAKeyParameters generatePublicKeyParameter(
         RSAPublicKey key)
     {
-        if (key instanceof BCRSAPublicKey)
-        {
-            return ((BCRSAPublicKey)key).engineGetKeyParameters();
-        }
-
         return new RSAKeyParameters(false, key.getModulus(), key.getPublicExponent());
+
     }
 
     static RSAKeyParameters generatePrivateKeyParameter(
         RSAPrivateKey key)
     {
-        if (key instanceof BCRSAPrivateKey)
-        {
-            return ((BCRSAPrivateKey)key).engineGetKeyParameters();
-        }
-
         if (key instanceof RSAPrivateCrtKey)
         {
             RSAPrivateCrtKey k = (RSAPrivateCrtKey)key;

@@ -20,9 +20,11 @@ import java.util.List;
 
 import com.android.org.bouncycastle.asn1.x509.Extension;
 import com.android.org.bouncycastle.jcajce.PKIXCertStore;
+import com.android.org.bouncycastle.jcajce.PKIXCertStoreSelector;
 import com.android.org.bouncycastle.jcajce.PKIXExtendedBuilderParameters;
 import com.android.org.bouncycastle.jcajce.PKIXExtendedParameters;
 import com.android.org.bouncycastle.jcajce.provider.asymmetric.x509.CertificateFactory;
+import com.android.org.bouncycastle.jce.exception.ExtCertPathBuilderException;
 import com.android.org.bouncycastle.x509.ExtendedPKIXBuilderParameters;
 import com.android.org.bouncycastle.x509.ExtendedPKIXParameters;
 
@@ -35,18 +37,6 @@ import com.android.org.bouncycastle.x509.ExtendedPKIXParameters;
 public class PKIXCertPathBuilderSpi
     extends CertPathBuilderSpi
 {
-    private final boolean isForCRLCheck;
-
-    public PKIXCertPathBuilderSpi()
-    {
-        this(false);
-    }
-
-    PKIXCertPathBuilderSpi(boolean isForCRLCheck)
-    {
-        this.isForCRLCheck = isForCRLCheck;
-    }
-
     /**
      * Build and validate a CertPath using the given parameter.
      * 
@@ -100,7 +90,26 @@ public class PKIXCertPathBuilderSpi
         X509Certificate cert;
 
         // search target certificates
-        targets = CertPathValidatorUtilities.findTargets(paramsPKIX);
+
+        PKIXCertStoreSelector certSelect = paramsPKIX.getBaseParameters().getTargetConstraints();
+
+        try
+        {
+            targets = CertPathValidatorUtilities.findCertificates(certSelect, paramsPKIX.getBaseParameters().getCertificateStores());
+            targets.addAll(CertPathValidatorUtilities.findCertificates(certSelect, paramsPKIX.getBaseParameters().getCertStores()));
+        }
+        catch (AnnotatedException e)
+        {
+            throw new ExtCertPathBuilderException(
+                "Error finding target certificate.", e);
+        }
+
+        if (targets.isEmpty())
+        {
+
+            throw new CertPathBuilderException(
+                "No certificate found matching targetContraints.");
+        }
 
         CertPathBuilderResult result = null;
 
@@ -168,7 +177,7 @@ public class PKIXCertPathBuilderSpi
         try
         {
             cFact = new CertificateFactory();
-            validator = new PKIXCertPathValidatorSpi(isForCRLCheck);
+            validator = new PKIXCertPathValidatorSpi();
         }
         catch (Exception e)
         {

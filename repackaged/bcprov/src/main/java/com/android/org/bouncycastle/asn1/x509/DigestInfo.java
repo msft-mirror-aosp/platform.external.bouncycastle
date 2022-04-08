@@ -50,7 +50,7 @@ public class DigestInfo
         return null;
     }
 
-    @android.compat.annotation.UnsupportedAppUsage(maxTargetSdk = 30, trackingBug = 170729553)
+    @android.compat.annotation.UnsupportedAppUsage
     public DigestInfo(
         AlgorithmIdentifier  algId,
         byte[]               digest)
@@ -80,7 +80,7 @@ public class DigestInfo
 
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector v = new ASN1EncodableVector(2);
+        ASN1EncodableVector  v = new ASN1EncodableVector();
 
         v.add(algId);
         v.add(new DEROctetString(digest));

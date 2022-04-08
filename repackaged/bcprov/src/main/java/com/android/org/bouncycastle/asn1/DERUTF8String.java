@@ -10,6 +10,7 @@ import com.android.org.bouncycastle.util.Strings;
  * DER UTF8String object.
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class DERUTF8String
     extends ASN1Primitive
     implements ASN1String
@@ -88,11 +89,13 @@ public class DERUTF8String
      *
      * @param string the string to be carried in the UTF8String object,
      */
+    @libcore.api.CorePlatformApi
     public DERUTF8String(String string)
     {
         this.string = Strings.toUTF8ByteArray(string);
     }
 
+    @libcore.api.CorePlatformApi
     public String getString()
     {
         return Strings.fromUTF8ByteArray(string);
@@ -131,8 +134,9 @@ public class DERUTF8String
         return 1 + StreamUtil.calculateBodyLength(string.length) + string.length;
     }
 
-    void encode(ASN1OutputStream out, boolean withTag) throws IOException
+    void encode(ASN1OutputStream out)
+        throws IOException
     {
-        out.writeEncoded(withTag, BERTags.UTF8_STRING, string);
+        out.writeEncoded(BERTags.UTF8_STRING, string);
     }
 }

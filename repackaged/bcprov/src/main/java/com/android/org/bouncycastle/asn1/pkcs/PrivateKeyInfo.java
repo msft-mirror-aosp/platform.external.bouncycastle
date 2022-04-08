@@ -2,6 +2,7 @@
 package com.android.org.bouncycastle.asn1.pkcs;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Enumeration;
 
 import com.android.org.bouncycastle.asn1.ASN1BitString;
@@ -59,6 +60,7 @@ import com.android.org.bouncycastle.util.BigIntegers;
  *  </pre>
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class PrivateKeyInfo
     extends ASN1Object
 {
@@ -73,6 +75,7 @@ public class PrivateKeyInfo
         return getInstance(ASN1Sequence.getInstance(obj, explicit));
     }
 
+    @libcore.api.CorePlatformApi
     public static PrivateKeyInfo getInstance(Object obj)
     {
         if (obj instanceof PrivateKeyInfo)
@@ -89,12 +92,12 @@ public class PrivateKeyInfo
 
     private static int getVersionValue(ASN1Integer version)
     {
-        int versionValue = version.intValueExact();
-        if (versionValue < 0 || versionValue > 1)
+        BigInteger bigValue = version.getValue();
+        if (bigValue.compareTo(BigIntegers.ZERO) < 0 || bigValue.compareTo(BigIntegers.ONE) > 0)
         {
             throw new IllegalArgumentException("invalid version for private key info");
         }
-        return versionValue;
+        return bigValue.intValue();
     }
 
     public PrivateKeyInfo(
@@ -177,26 +180,18 @@ public class PrivateKeyInfo
         }
     }
 
-    public ASN1Integer getVersion()
-    {
-        return version;
-    }
-
     public ASN1Set getAttributes()
     {
         return attributes;
     }
 
+    @libcore.api.CorePlatformApi
     public AlgorithmIdentifier getPrivateKeyAlgorithm()
     {
         return privateKeyAlgorithm;
     }
 
-    public ASN1OctetString getPrivateKey()
-    {
-        return new DEROctetString(privateKey.getOctets());
-    }
-
+    @libcore.api.CorePlatformApi
     public ASN1Encodable parsePrivateKey()
         throws IOException
     {
@@ -239,7 +234,7 @@ public class PrivateKeyInfo
 
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector v = new ASN1EncodableVector(5);
+        ASN1EncodableVector v = new ASN1EncodableVector();
 
         v.add(version);
         v.add(privateKeyAlgorithm);

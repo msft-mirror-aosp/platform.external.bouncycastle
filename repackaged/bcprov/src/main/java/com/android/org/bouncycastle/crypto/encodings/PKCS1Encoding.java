@@ -1,6 +1,8 @@
 /* GENERATED SOURCE. DO NOT MODIFY. */
 package com.android.org.bouncycastle.crypto.encodings;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.security.SecureRandom;
 
 import com.android.org.bouncycastle.crypto.AsymmetricBlockCipher;
@@ -10,7 +12,6 @@ import com.android.org.bouncycastle.crypto.InvalidCipherTextException;
 import com.android.org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import com.android.org.bouncycastle.crypto.params.ParametersWithRandom;
 import com.android.org.bouncycastle.util.Arrays;
-import com.android.org.bouncycastle.util.Properties;
 
 /**
  * this does your basic PKCS 1 v1.5 padding - whether or not you should be using this
@@ -96,12 +97,28 @@ public class PKCS1Encoding
     //
     private boolean useStrict()
     {
-        if (Properties.isOverrideSetTo(NOT_STRICT_LENGTH_ENABLED_PROPERTY, true))
+        // required if security manager has been installed.
+        String strict = (String)AccessController.doPrivileged(new PrivilegedAction()
         {
-            return false;
+            public Object run()
+            {
+                return System.getProperty(STRICT_LENGTH_ENABLED_PROPERTY);
+            }
+        });
+        String notStrict = (String)AccessController.doPrivileged(new PrivilegedAction()
+        {
+            public Object run()
+            {
+                return System.getProperty(NOT_STRICT_LENGTH_ENABLED_PROPERTY);
+            }
+        });
+
+        if (notStrict != null)
+        {
+            return !notStrict.equals("true");
         }
 
-        return !Properties.isOverrideSetTo(STRICT_LENGTH_ENABLED_PROPERTY, false);
+        return strict == null || strict.equals("true");
     }
 
     public AsymmetricBlockCipher getUnderlyingCipher()
@@ -254,7 +271,7 @@ public class PKCS1Encoding
 		 * Now the padding check, check for no 0 byte in the padding
 		 */
         int plen = encoded.length - (
-            pLen /* Length of the PMS */
+            pLen /* Lenght of the PMS */
                 + 1 /* Final 0-byte before PMS */
         );
 

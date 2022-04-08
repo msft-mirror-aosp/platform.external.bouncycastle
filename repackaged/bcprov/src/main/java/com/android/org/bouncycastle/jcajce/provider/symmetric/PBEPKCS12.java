@@ -59,7 +59,7 @@ public class PBEPKCS12
             Class paramSpec)
             throws InvalidParameterSpecException
         {
-            if (paramSpec == PBEParameterSpec.class || paramSpec == AlgorithmParameterSpec.class)
+            if (paramSpec == PBEParameterSpec.class)
             {
                 return new PBEParameterSpec(params.getIV(),
                     params.getIterations().intValue());

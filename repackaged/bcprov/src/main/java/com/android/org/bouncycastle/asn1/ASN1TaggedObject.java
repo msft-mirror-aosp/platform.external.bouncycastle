@@ -9,13 +9,15 @@ import java.io.IOException;
  * rules (as with sequences).
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public abstract class ASN1TaggedObject
     extends ASN1Primitive
     implements ASN1TaggedObjectParser
 {
-    final int           tagNo;
-    final boolean       explicit;
-    final ASN1Encodable obj;
+    int             tagNo;
+    boolean         empty = false;
+    boolean         explicit = true;
+    ASN1Encodable obj = null;
 
     static public ASN1TaggedObject getInstance(
         ASN1TaggedObject    obj,
@@ -23,7 +25,7 @@ public abstract class ASN1TaggedObject
     {
         if (explicit)
         {
-            return getInstance(obj.getObject());
+            return (ASN1TaggedObject)obj.getObject();
         }
 
         throw new IllegalArgumentException("implicitly tagged tagged object");
@@ -34,7 +36,7 @@ public abstract class ASN1TaggedObject
     {
         if (obj == null || obj instanceof ASN1TaggedObject) 
         {
-            return (ASN1TaggedObject)obj;
+                return (ASN1TaggedObject)obj;
         }
         else if (obj instanceof byte[])
         {
@@ -66,39 +68,83 @@ public abstract class ASN1TaggedObject
         int             tagNo,
         ASN1Encodable   obj)
     {
-        if (null == obj)
+        if (obj instanceof ASN1Choice)
         {
-            throw new NullPointerException("'obj' cannot be null");
+            this.explicit = true;
         }
-
+        else
+        {
+            this.explicit = explicit;
+        }
+        
         this.tagNo = tagNo;
-        this.explicit = explicit || (obj instanceof ASN1Choice);
-        this.obj = obj;
-    }
 
-    boolean asn1Equals(ASN1Primitive other)
+        if (this.explicit)
+        {
+            this.obj = obj;
+        }
+        else
+        {
+            ASN1Primitive prim = obj.toASN1Primitive();
+
+            if (prim instanceof ASN1Set)
+            {
+                ASN1Set s = null;
+            }
+
+            this.obj = obj;
+        }
+    }
+    
+    boolean asn1Equals(
+        ASN1Primitive o)
     {
-        if (!(other instanceof ASN1TaggedObject))
+        if (!(o instanceof ASN1TaggedObject))
         {
             return false;
         }
-
-        ASN1TaggedObject that = (ASN1TaggedObject)other;
-
-        if (this.tagNo != that.tagNo || this.explicit != that.explicit)
+        
+        ASN1TaggedObject other = (ASN1TaggedObject)o;
+        
+        if (tagNo != other.tagNo || empty != other.empty || explicit != other.explicit)
         {
             return false;
         }
-
-        ASN1Primitive p1 = this.obj.toASN1Primitive();
-        ASN1Primitive p2 = that.obj.toASN1Primitive();
-
-        return p1 == p2 || p1.asn1Equals(p2);
+        
+        if(obj == null)
+        {
+            if (other.obj != null)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (!(obj.toASN1Primitive().equals(other.obj.toASN1Primitive())))
+            {
+                return false;
+            }
+        }
+        
+        return true;
     }
-
+    
+    @libcore.api.CorePlatformApi
     public int hashCode()
     {
-        return tagNo ^ (explicit ? 0x0F : 0xF0) ^ obj.toASN1Primitive().hashCode();
+        int code = tagNo;
+
+        // TODO: actually this is wrong - the problem is that a re-encoded
+        // object may end up with a different hashCode due to implicit
+        // tagging. As implicit tagging is ambiguous if a sequence is involved
+        // it seems the only correct method for both equals and hashCode is to
+        // compare the encodings...
+        if (obj != null)
+        {
+            code ^= obj.hashCode();
+        }
+
+        return code;
     }
 
     /**
@@ -125,6 +171,11 @@ public abstract class ASN1TaggedObject
         return explicit;
     }
 
+    public boolean isEmpty()
+    {
+        return empty;
+    }
+
     /**
      * Return whatever was following the tag.
      * <p>
@@ -132,9 +183,15 @@ public abstract class ASN1TaggedObject
      * trying to extract a tagged object you should be going via the
      * appropriate getInstance method.
      */
+    @libcore.api.CorePlatformApi
     public ASN1Primitive getObject()
     {
-        return obj.toASN1Primitive();
+        if (obj != null)
+        {
+            return obj.toASN1Primitive();
+        }
+
+        return null;
     }
 
     /**
@@ -180,7 +237,8 @@ public abstract class ASN1TaggedObject
         return new DLTaggedObject(explicit, tagNo, obj);
     }
 
-    abstract void encode(ASN1OutputStream out, boolean withTag) throws IOException;
+    abstract void encode(ASN1OutputStream out)
+        throws IOException;
 
     public String toString()
     {

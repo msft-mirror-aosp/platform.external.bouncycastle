@@ -22,7 +22,6 @@ import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1Set;
 import org.bouncycastle.asn1.BERSequence;
 import org.bouncycastle.asn1.DERSet;
-import org.bouncycastle.asn1.DLSet;
 import org.bouncycastle.asn1.cms.ContentInfo;
 import org.bouncycastle.asn1.cms.SignedData;
 import org.bouncycastle.asn1.cms.SignerInfo;
@@ -233,7 +232,7 @@ public class CMSSignedData
      */
     public int getVersion()
     {
-        return signedData.getVersion().intValueExact();
+        return signedData.getVersion().getValue().intValue();
     }
 
     /**
@@ -391,17 +390,6 @@ public class CMSSignedData
     // BEGIN Android-removed: Unknown reason
     /*
     /**
-     * return the ASN.1 encoded representation of this object using the specified encoding.
-     *
-     * @param encoding the ASN.1 encoding format to use ("BER", "DL", or "DER").
-     */
-    public byte[] getEncoded(String encoding)
-        throws IOException
-    {
-        return contentInfo.getEncoded(encoding);
-    }
-
-    /**
      * Verify all the SignerInformation objects and their associated counter signatures attached
      * to this CMS SignedData object.
      *
@@ -527,7 +515,7 @@ public class CMSSignedData
         }
 
         ASN1Set             digests = new DERSet(digestAlgs);
-        ASN1Set             signers = new DLSet(vec);
+        ASN1Set             signers = new DERSet(vec);
         ASN1Sequence        sD = (ASN1Sequence)signedData.signedData.toASN1Primitive();
 
         vec = new ASN1EncodableVector();

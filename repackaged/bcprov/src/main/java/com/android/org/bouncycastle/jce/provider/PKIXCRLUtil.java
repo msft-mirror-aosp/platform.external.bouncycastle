@@ -17,18 +17,18 @@ import com.android.org.bouncycastle.jcajce.PKIXCRLStoreSelector;
 import com.android.org.bouncycastle.util.Store;
 import com.android.org.bouncycastle.util.StoreException;
 
-abstract class PKIXCRLUtil
+class PKIXCRLUtil
 {
-    static Set findCRLs(PKIXCRLStoreSelector crlselect, Date validityDate, List certStores, List pkixCrlStores)
+    public Set findCRLs(PKIXCRLStoreSelector crlselect, Date validityDate, List certStores, List pkixCrlStores)
         throws AnnotatedException
     {
-        HashSet initialSet = new HashSet();
+        Set initialSet = new HashSet();
 
         // get complete CRL(s)
         try
         {
-            findCRLs(initialSet, crlselect, pkixCrlStores);
-            findCRLs(initialSet, crlselect, certStores);
+            initialSet.addAll(findCRLs(crlselect, pkixCrlStores));
+            initialSet.addAll(findCRLs(crlselect, certStores));
         }
         catch (AnnotatedException e)
         {
@@ -46,7 +46,14 @@ abstract class PKIXCRLUtil
             {
                 X509Certificate cert = crlselect.getCertificateChecking();
 
-                if (null == cert || crl.getThisUpdate().before(cert.getNotAfter()))
+                if (cert != null)
+                {
+                    if (crl.getThisUpdate().before(cert.getNotAfter()))
+                    {
+                        finalSet.add(crl);
+                    }
+                }
+                else
                 {
                     finalSet.add(crl);
                 }
@@ -57,23 +64,27 @@ abstract class PKIXCRLUtil
     }
 
     /**
-     * Add to a HashSet any and all CRLs found in the X509Store's that are matching the crlSelect
-     * critera.
+     * Return a Collection of all CRLs found in the X509Store's that are
+     * matching the crlSelect criteriums.
      *
-     * @param crls
-     *            the {@link HashSet} to add the CRLs to.
-     * @param crlSelect
-     *            a {@link com.android.org.bouncycastle.jcajce.PKIXCRLStoreSelector} object that will be used to
-     *            select the CRLs
-     * @param crlStores
-     *            a List containing only {@link Store} objects. These are used to search for CRLs
+     * @param crlSelect a {@link com.android.org.bouncycastle.jcajce.PKIXCRLStoreSelector} object that will be used
+     *            to select the CRLs
+     * @param crlStores a List containing only
+     *            {@link Store} objects.
+     *            These are used to search for CRLs
+     *
+     * @return a Collection of all found {@link java.security.cert.X509CRL X509CRL} objects. May be
+     *         empty but never <code>null</code>.
      */
-    private static void findCRLs(HashSet crls, PKIXCRLStoreSelector crlSelect, List crlStores) throws AnnotatedException
+    private final Collection findCRLs(PKIXCRLStoreSelector crlSelect,
+        List crlStores) throws AnnotatedException
     {
+        Set crls = new HashSet();
+        Iterator iter = crlStores.iterator();
+
         AnnotatedException lastException = null;
         boolean foundValidStore = false;
 
-        Iterator iter = crlStores.iterator();
         while (iter.hasNext())
         {
             Object obj = iter.next();
@@ -91,7 +102,8 @@ abstract class PKIXCRLUtil
                 }
                 catch (StoreException e)
                 {
-                    lastException = new AnnotatedException("Exception searching in X.509 CRL store.", e);
+                    lastException = new AnnotatedException(
+                        "Exception searching in X.509 CRL store.", e);
                 }
             }
             else
@@ -107,14 +119,16 @@ abstract class PKIXCRLUtil
                 }
                 catch (CertStoreException e)
                 {
-                    lastException = new AnnotatedException("Exception searching in X.509 CRL store.", e);
+                    lastException = new AnnotatedException(
+                        "Exception searching in X.509 CRL store.", e);
                 }
             }
         }
-
         if (!foundValidStore && lastException != null)
         {
             throw lastException;
         }
+        return crls;
     }
+
 }

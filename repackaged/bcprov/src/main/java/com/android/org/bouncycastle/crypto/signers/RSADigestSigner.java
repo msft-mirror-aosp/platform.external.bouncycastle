@@ -82,15 +82,7 @@ public class RSADigestSigner
         ASN1ObjectIdentifier digestOid)
     {
         this.digest = digest;
-        if (digestOid != null)
-        {
-            this.algId = new AlgorithmIdentifier(digestOid, DERNull.INSTANCE);
-        }
-        else
-        {
-            // NULL digester, match behaviour with DigestSignatureSpi
-            this.algId = null;
-        }
+        this.algId = new AlgorithmIdentifier(digestOid, DERNull.INSTANCE);
     }
 
     /**
@@ -102,7 +94,7 @@ public class RSADigestSigner
     }
 
     /**
-     * Initialize the signer for signing or verification.
+     * initialise the signer for signing or verification.
      *
      * @param forSigning
      *            true if for signing, false otherwise
@@ -258,20 +250,6 @@ public class RSADigestSigner
         byte[] hash)
         throws IOException
     {
-        if (algId == null)
-        {
-            try
-            {
-                // check hash is at least right format
-                DigestInfo.getInstance(hash);
-                return hash;
-            }
-            catch (IllegalArgumentException e)
-            {
-                throw new IOException("malformed DigestInfo for NONEwithRSA hash: " + e.getMessage());
-            }
-        }
-
         DigestInfo dInfo = new DigestInfo(algId, hash);
 
         return dInfo.getEncoded(ASN1Encoding.DER);

@@ -25,11 +25,6 @@ public class TeeInputStream
         this.output = output;
     }
 
-    public int available() throws IOException
-    {
-        return input.available();
-    }
-
     public int read(byte[] buf)
         throws IOException
     {

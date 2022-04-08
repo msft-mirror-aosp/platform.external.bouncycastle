@@ -21,7 +21,14 @@ public class ISO10126d2Padding
     public void init(SecureRandom random)
         throws IllegalArgumentException
     {
-        this.random = CryptoServicesRegistrar.getSecureRandom(random);
+        if (random != null)
+        {
+            this.random = random;
+        }
+        else
+        {
+            this.random = CryptoServicesRegistrar.getSecureRandom();
+        }
     }
 
     /**

@@ -15,6 +15,7 @@ import com.android.org.bouncycastle.asn1.DERSequence;
 /**
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class BasicConstraints
     extends ASN1Object
 {
@@ -28,6 +29,7 @@ public class BasicConstraints
         return getInstance(ASN1Sequence.getInstance(obj, explicit));
     }
 
+    @libcore.api.CorePlatformApi
     public static BasicConstraints getInstance(
         Object  obj)
     {
@@ -49,7 +51,7 @@ public class BasicConstraints
 
     public static BasicConstraints fromExtensions(Extensions extensions)
     {
-        return getInstance(Extensions.getExtensionParsedValue(extensions, Extension.basicConstraints));
+        return BasicConstraints.getInstance(extensions.getExtensionParsedValue(Extension.basicConstraints));
     }
 
     private BasicConstraints(
@@ -111,6 +113,7 @@ public class BasicConstraints
         this.pathLenConstraint = new ASN1Integer(pathLenConstraint);
     }
 
+    @libcore.api.CorePlatformApi
     public boolean isCA()
     {
         return (cA != null) && cA.isTrue();
@@ -137,7 +140,7 @@ public class BasicConstraints
      */
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector v = new ASN1EncodableVector(2);
+        ASN1EncodableVector  v = new ASN1EncodableVector();
 
         if (cA != null)
         {
@@ -156,6 +159,10 @@ public class BasicConstraints
     {
         if (pathLenConstraint == null)
         {
+            if (cA == null)
+            {
+                return "BasicConstraints: isCa(false)";
+            }
             return "BasicConstraints: isCa(" + this.isCA() + ")";
         }
         return "BasicConstraints: isCa(" + this.isCA() + "), pathLenConstraint = " + pathLenConstraint.getValue();

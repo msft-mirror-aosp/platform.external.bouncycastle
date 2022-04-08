@@ -37,6 +37,7 @@ import com.android.org.bouncycastle.util.encoders.Hex;
  * @deprecated use org.bouncycastle.asn1.x500.X500Name.
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class X509Name
     extends ASN1Object
 {
@@ -50,12 +51,14 @@ public class X509Name
      * organization - StringType(SIZE(1..64))
      * @deprecated use a X500NameStyle
      */
+    @libcore.api.CorePlatformApi
     public static final ASN1ObjectIdentifier O = new ASN1ObjectIdentifier("2.5.4.10");
 
     /**
      * organizational unit name - StringType(SIZE(1..64))
      * @deprecated use a X500NameStyle
      */
+    @libcore.api.CorePlatformApi
     public static final ASN1ObjectIdentifier OU = new ASN1ObjectIdentifier("2.5.4.11");
 
     /**
@@ -68,7 +71,8 @@ public class X509Name
      * common name - StringType(SIZE(1..64))
      * @deprecated use a X500NameStyle
      */
-    @android.compat.annotation.UnsupportedAppUsage(maxTargetSdk = 30, trackingBug = 170729553)
+    @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public static final ASN1ObjectIdentifier CN = new ASN1ObjectIdentifier("2.5.4.3");
 
     /**
@@ -227,6 +231,7 @@ public class X509Name
      * default look up table translating OID values into their common symbols following
      * the convention in RFC 2253 with a few extras
      */
+    @libcore.api.CorePlatformApi
     public static final Hashtable DefaultSymbols = new Hashtable();
 
     /**
@@ -376,10 +381,11 @@ public class X509Name
         return getInstance(ASN1Sequence.getInstance(obj, explicit));
     }
 
+    @libcore.api.CorePlatformApi
     public static X509Name getInstance(
         Object  obj)
     {
-        if (obj instanceof X509Name)
+        if (obj == null || obj instanceof X509Name)
         {
             return (X509Name)obj;
         }
@@ -405,7 +411,7 @@ public class X509Name
      * the principal will be a list of constructed sets, each containing an (OID, String) pair.
      * @deprecated use X500Name.getInstance()
      */
-    @android.compat.annotation.UnsupportedAppUsage(maxTargetSdk = 30, trackingBug = 170729553)
+    @android.compat.annotation.UnsupportedAppUsage
     public X509Name(
         ASN1Sequence  seq)
     {
@@ -595,6 +601,7 @@ public class X509Name
      * @deprecated use X500Name, X500NameBuilder
      */
     @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public X509Name(
         String  dirName)
     {
@@ -866,7 +873,8 @@ public class X509Name
     /**
      * return a vector of the oids in the name, in the order they were found.
      */
-    @android.compat.annotation.UnsupportedAppUsage(maxTargetSdk = 30, trackingBug = 170729553)
+    @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public Vector getOIDs()
     {
         Vector  v = new Vector();
@@ -883,7 +891,8 @@ public class X509Name
      * return a vector of the values found in the name, in the order they
      * were found.
      */
-    @android.compat.annotation.UnsupportedAppUsage(maxTargetSdk = 30, trackingBug = 170729553)
+    @android.compat.annotation.UnsupportedAppUsage
+    @libcore.api.CorePlatformApi
     public Vector getValues()
     {
         Vector  v = new Vector();
@@ -935,7 +944,7 @@ public class X509Name
             
             for (int i = 0; i != ordering.size(); i++)
             {
-                ASN1EncodableVector     v = new ASN1EncodableVector(2);
+                ASN1EncodableVector     v = new ASN1EncodableVector();
                 ASN1ObjectIdentifier     oid = (ASN1ObjectIdentifier)ordering.elementAt(i);
 
                 v.add(oid);
@@ -952,8 +961,8 @@ public class X509Name
                 else
                 {
                     vec.add(new DERSet(sVec));
-
                     sVec = new ASN1EncodableVector();
+                    
                     sVec.add(new DERSequence(v));
                 }
                 
@@ -1195,7 +1204,7 @@ public class X509Name
     {
         try
         {
-            return ASN1Primitive.fromByteArray(Hex.decodeStrict(oValue, 1, oValue.length() - 1));
+            return ASN1Primitive.fromByteArray(Hex.decode(oValue.substring(1)));
         }
         catch (IOException e)
         {
@@ -1303,6 +1312,7 @@ public class X509Name
      * @param reverse if true start at the end of the sequence and work back.
      * @param oidSymbols look up table strings for oids.
      */
+    @libcore.api.CorePlatformApi
     public String toString(
         boolean     reverse,
         Hashtable   oidSymbols)

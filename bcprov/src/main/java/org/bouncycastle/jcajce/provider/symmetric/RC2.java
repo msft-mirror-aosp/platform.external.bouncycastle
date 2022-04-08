@@ -375,7 +375,7 @@ public final class RC2
                 }
             }
 
-            if (paramSpec == IvParameterSpec.class)
+            if (paramSpec == IvParameterSpec.class || paramSpec == AlgorithmParameterSpec.class)
             {
                 return new IvParameterSpec(iv);
             }

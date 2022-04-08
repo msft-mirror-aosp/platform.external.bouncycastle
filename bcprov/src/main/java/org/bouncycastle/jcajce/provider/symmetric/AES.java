@@ -26,7 +26,6 @@ import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.BufferedBlockCipher;
 import org.bouncycastle.crypto.CipherKeyGenerator;
 import org.bouncycastle.crypto.CipherParameters;
-import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.Mac;
@@ -56,7 +55,6 @@ import org.bouncycastle.jcajce.provider.symmetric.util.BaseKeyGenerator;
 // import org.bouncycastle.jcajce.provider.symmetric.util.BaseSecretKeyFactory;
 import org.bouncycastle.jcajce.provider.symmetric.util.BaseWrapCipher;
 import org.bouncycastle.jcajce.provider.symmetric.util.BlockCipherProvider;
-import org.bouncycastle.jcajce.provider.symmetric.util.GcmSpecUtil;
 import org.bouncycastle.jcajce.provider.symmetric.util.IvAlgorithmParameters;
 import org.bouncycastle.jcajce.provider.symmetric.util.PBESecretKeyFactory;
 import org.bouncycastle.jcajce.spec.AEADParameterSpec;
@@ -142,7 +140,7 @@ public final class AES
     {
         public CCM()
         {
-            super(new CCMBlockCipher(new AESEngine()), false, 12);
+            super(new CCMBlockCipher(new AESEngine()), false, 16);
         }
     }
 
@@ -547,7 +545,7 @@ public final class AES
 
             if (random == null)
             {
-                random = CryptoServicesRegistrar.getSecureRandom();
+                random = new SecureRandom();
             }
 
             random.nextBytes(iv);
@@ -851,8 +849,6 @@ public final class AES
 
         public void configure(ConfigurableProvider provider)
         {
-            // BEGIN Android-removed: Unsupported algorithms
-            /*
             provider.addAlgorithm("AlgorithmParameters.AES", PREFIX + "$AlgParams");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + wrongAES128, "AES");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + wrongAES192, "AES");
@@ -865,7 +861,9 @@ public final class AES
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + NISTObjectIdentifiers.id_aes128_GCM, "GCM");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + NISTObjectIdentifiers.id_aes192_GCM, "GCM");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + NISTObjectIdentifiers.id_aes256_GCM, "GCM");
-            
+
+            // BEGIN Android-removed: Unsupported algorithms
+            /*
             provider.addAlgorithm("AlgorithmParameters.CCM", PREFIX + "$AlgParamsCCM");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + NISTObjectIdentifiers.id_aes128_CCM, "CCM");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameters." + NISTObjectIdentifiers.id_aes192_CCM, "CCM");
@@ -937,14 +935,20 @@ public final class AES
             provider.addAlgorithm("Alg.Alias.AlgorithmParameterGenerator." + NISTObjectIdentifiers.id_aes128_GCM, "GCM");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameterGenerator." + NISTObjectIdentifiers.id_aes192_GCM, "GCM");
             provider.addAlgorithm("Alg.Alias.AlgorithmParameterGenerator." + NISTObjectIdentifiers.id_aes256_GCM, "GCM");
-            
+            */
+            // END Android-removed: Unsupported algorithms
+
+            // BEGIN Android-changed: Use standard name for AES/GCM/NOPADDING instead of "GCM"
             provider.addAttributes("Cipher.AES/GCM/NOPADDING", generalAesAttributes);
             provider.addAlgorithm("Cipher.AES/GCM/NOPADDING", PREFIX + "$GCM");
             provider.addAlgorithm("Alg.Alias.Cipher." + NISTObjectIdentifiers.id_aes128_GCM, "AES/GCM/NOPADDING");
             provider.addAlgorithm("Alg.Alias.Cipher." + NISTObjectIdentifiers.id_aes192_GCM, "AES/GCM/NOPADDING");
             provider.addAlgorithm("Alg.Alias.Cipher." + NISTObjectIdentifiers.id_aes256_GCM, "AES/GCM/NOPADDING");
-            
+            // END Android-changed: Use standard name for AES/GCM/NOPADDING instead of "GCM"
+
             provider.addAlgorithm("KeyGenerator.AES", PREFIX + "$KeyGen");
+            // BEGIN Android-removed: Unsupported algorithms
+            /*
             provider.addAlgorithm("KeyGenerator." + wrongAES128, PREFIX + "$KeyGen128");
             provider.addAlgorithm("KeyGenerator." + wrongAES192, PREFIX + "$KeyGen192");
             provider.addAlgorithm("KeyGenerator." + wrongAES256, PREFIX + "$KeyGen256");

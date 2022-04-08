@@ -7,24 +7,19 @@ package com.android.org.bouncycastle.crypto.params;
 public class ECKeyParameters
     extends AsymmetricKeyParameter
 {
-    private final ECDomainParameters parameters;
+    ECDomainParameters params;
 
     protected ECKeyParameters(
         boolean             isPrivate,
-        ECDomainParameters  parameters)
+        ECDomainParameters  params)
     {
         super(isPrivate);
 
-        if (null == parameters)
-        {
-            throw new NullPointerException("'parameters' cannot be null");
-        }
-
-        this.parameters = parameters;
+        this.params = params;
     }
 
     public ECDomainParameters getParameters()
     {
-        return parameters;
+        return params;
     }
 }

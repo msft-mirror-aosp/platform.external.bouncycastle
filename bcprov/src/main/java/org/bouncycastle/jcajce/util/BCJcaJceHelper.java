@@ -15,12 +15,9 @@ public class BCJcaJceHelper
 
     private static synchronized Provider getBouncyCastleProvider()
     {
-        final Provider system = Security.getProvider("BC");
-        // Avoid using the old, deprecated system BC provider on Android.
-        // See: https://android-developers.googleblog.com/2018/03/cryptography-changes-in-android-p.html
-        if (system instanceof BouncyCastleProvider)
+        if (Security.getProvider("BC") != null)
         {
-            return system;
+            return Security.getProvider("BC");
         }
         else if (bcProvider != null)
         {

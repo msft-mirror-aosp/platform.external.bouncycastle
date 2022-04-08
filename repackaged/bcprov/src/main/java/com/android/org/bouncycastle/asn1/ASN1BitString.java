@@ -1,6 +1,7 @@
 /* GENERATED SOURCE. DO NOT MODIFY. */
 package com.android.org.bouncycastle.asn1;
 
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +13,7 @@ import com.android.org.bouncycastle.util.io.Streams;
  * Base class for BIT STRING objects
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public abstract class ASN1BitString
     extends ASN1Primitive
     implements ASN1String
@@ -101,17 +103,6 @@ public abstract class ASN1BitString
         return result;
     }
 
-    protected ASN1BitString(byte data, int padBits)
-    {
-        if (padBits > 7 || padBits < 0)
-        {
-            throw new IllegalArgumentException("pad bits cannot be greater than 7 or less than 0");
-        }
-
-        this.data = new byte[]{ data };
-        this.padBits = padBits;
-    }
-
     /**
      * Base constructor.
      *
@@ -124,7 +115,7 @@ public abstract class ASN1BitString
     {
         if (data == null)
         {
-            throw new NullPointerException("'data' cannot be null");
+            throw new NullPointerException("data cannot be null");
         }
         if (data.length == 0 && padBits != 0)
         {
@@ -146,17 +137,20 @@ public abstract class ASN1BitString
      */
     public String getString()
     {
-        StringBuffer buf = new StringBuffer("#");
+        StringBuffer          buf = new StringBuffer("#");
+        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+        ASN1OutputStream aOut = new ASN1OutputStream(bOut);
 
-        byte[] string;
         try
         {
-            string = getEncoded();
+            aOut.writeObject(this);
         }
         catch (IOException e)
         {
             throw new ASN1ParsingException("Internal error encoding BitString: " + e.getMessage(), e);
         }
+
+        byte[]    string = bOut.toByteArray();
 
         for (int i = 0; i != string.length; i++)
         {
@@ -173,16 +167,18 @@ public abstract class ASN1BitString
     public int intValue()
     {
         int value = 0;
-        int end = Math.min(4, data.length - 1);
-        for (int i = 0; i < end; ++i)
+        byte[] string = data;
+
+        if (padBits > 0 && data.length <= 4)
         {
-            value |= (data[i] & 0xFF) << (8 * i);
+            string = derForm(data, padBits);
         }
-        if (0 <= end && end < 4)
+
+        for (int i = 0; i != string.length && i != 4; i++)
         {
-            byte der = (byte)(data[end] & (0xFF << padBits));
-            value |= (der & 0xFF) << (8 * end);
+            value |= (string[i] & 0xff) << (8 * i);
         }
+
         return value;
     }
 
@@ -205,15 +201,7 @@ public abstract class ASN1BitString
 
     public byte[] getBytes()
     {
-        if (0 == data.length)
-        {
-            return data;
-        }
-
-        byte[] rv = Arrays.clone(data);
-        // DER requires pad bits be zero
-        rv[data.length - 1] &= (0xFF << padBits);
-        return rv;
+        return derForm(data, padBits);
     }
 
     public int getPadBits()
@@ -226,23 +214,13 @@ public abstract class ASN1BitString
         return getString();
     }
 
+    @libcore.api.CorePlatformApi
     public int hashCode()
     {
-        int end = data.length;
-        if (--end < 0)
-        {
-            return 1;
-        }
-
-        byte der = (byte)(data[end] & (0xFF << padBits));
-
-        int hc = Arrays.hashCode(data, 0, end);
-        hc *= 257;
-        hc ^= der;
-        return hc ^ padBits;
+        return padBits ^ Arrays.hashCode(this.getBytes());
     }
 
-    boolean asn1Equals(
+    protected boolean asn1Equals(
         ASN1Primitive o)
     {
         if (!(o instanceof ASN1BitString))
@@ -251,32 +229,21 @@ public abstract class ASN1BitString
         }
 
         ASN1BitString other = (ASN1BitString)o;
-        if (padBits != other.padBits)
+
+        return this.padBits == other.padBits
+            && Arrays.areEqual(this.getBytes(), other.getBytes());
+    }
+
+    protected static byte[] derForm(byte[] data, int padBits)
+    {
+        byte[] rv = Arrays.clone(data);
+        // DER requires pad bits be zero
+        if (padBits > 0)
         {
-            return false;
-        }
-        byte[] a = data, b = other.data;
-        int end = a.length;
-        if (end != b.length)
-        {
-            return false;
-        }
-        if (--end < 0)
-        {
-            return true;
-        }
-        for (int i = 0; i < end; ++i)
-        {
-            if (a[i] != b[i])
-            {
-                return false;
-            }
+            rv[data.length - 1] &= 0xff << padBits;
         }
 
-        byte derA = (byte)(a[end] & (0xFF << padBits));
-        byte derB = (byte)(b[end] & (0xFF << padBits));
-
-        return derA == derB;
+        return rv;
     }
 
     static ASN1BitString fromInputStream(int length, InputStream stream)
@@ -299,7 +266,7 @@ public abstract class ASN1BitString
 
             if (padBits > 0 && padBits < 8)
             {
-                if (data[data.length - 1] != (byte)(data[data.length - 1] & (0xFF << padBits)))
+                if (data[data.length - 1] != (byte)(data[data.length - 1] & (0xff << padBits)))
                 {
                     return new DLBitString(data, padBits);
                 }
@@ -324,5 +291,6 @@ public abstract class ASN1BitString
         return new DLBitString(data, padBits);
     }
 
-    abstract void encode(ASN1OutputStream out, boolean withTag) throws IOException;
+    abstract void encode(ASN1OutputStream out)
+        throws IOException;
 }

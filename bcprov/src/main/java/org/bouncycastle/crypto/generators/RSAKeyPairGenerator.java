@@ -139,7 +139,7 @@ public class RSAKeyPairGenerator
 
             dP = d.remainder(pSub1);
             dQ = d.remainder(qSub1);
-            qInv = BigIntegers.modOddInverse(p, q);
+            qInv = q.modInverse(p);
 
             result = new AsymmetricCipherKeyPair(
                 new RSAKeyParameters(false, n, e),

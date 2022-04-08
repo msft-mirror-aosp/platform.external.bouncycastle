@@ -27,14 +27,15 @@ class ConstructedOctetStream
                 return -1;
             }
 
-            ASN1OctetStringParser next = getNextParser();
-            if (next == null)
+            ASN1OctetStringParser s = (ASN1OctetStringParser)_parser.readObject();
+
+            if (s == null)
             {
                 return -1;
             }
 
             _first = false;
-            _currentStream = next.getOctetStream();
+            _currentStream = s.getOctetStream();
         }
 
         int totalRead = 0;
@@ -54,14 +55,15 @@ class ConstructedOctetStream
             }
             else
             {
-                ASN1OctetStringParser next = getNextParser();
-                if (next == null)
+                ASN1OctetStringParser aos = (ASN1OctetStringParser)_parser.readObject();
+
+                if (aos == null)
                 {
                     _currentStream = null;
                     return totalRead < 1 ? -1 : totalRead;
                 }
 
-                _currentStream = next.getOctetStream();
+                _currentStream = aos.getOctetStream();
             }
         }
     }
@@ -76,14 +78,15 @@ class ConstructedOctetStream
                 return -1;
             }
 
-            ASN1OctetStringParser next = getNextParser();
-            if (next == null)
+            ASN1OctetStringParser s = (ASN1OctetStringParser)_parser.readObject();
+    
+            if (s == null)
             {
                 return -1;
             }
-
+    
             _first = false;
-            _currentStream = next.getOctetStream();
+            _currentStream = s.getOctetStream();
         }
 
         for (;;)
@@ -95,30 +98,15 @@ class ConstructedOctetStream
                 return b;
             }
 
-            ASN1OctetStringParser next = getNextParser();
-            if (next == null)
+            ASN1OctetStringParser s = (ASN1OctetStringParser)_parser.readObject();
+
+            if (s == null)
             {
                 _currentStream = null;
                 return -1;
             }
 
-            _currentStream = next.getOctetStream();
+            _currentStream = s.getOctetStream();
         }
-    }
-
-    private ASN1OctetStringParser getNextParser() throws IOException
-    {
-        ASN1Encodable asn1Obj = _parser.readObject();
-        if (asn1Obj == null)
-        {
-            return null;
-        }
-
-        if (asn1Obj instanceof ASN1OctetStringParser)
-        {
-            return (ASN1OctetStringParser)asn1Obj;
-        }
-
-        throw new IOException("unknown object encountered: " + asn1Obj.getClass());
     }
 }

@@ -3,14 +3,13 @@ package org.bouncycastle.math.ec.custom.sec;
 import java.math.BigInteger;
 
 import org.bouncycastle.math.ec.ECFieldElement;
+import org.bouncycastle.math.raw.Mod;
 import org.bouncycastle.math.raw.Nat;
 import org.bouncycastle.util.Arrays;
-import org.bouncycastle.util.encoders.Hex;
 
 public class SecP384R1FieldElement extends ECFieldElement.AbstractFp
 {
-    public static final BigInteger Q = new BigInteger(1,
-        Hex.decodeStrict("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFF0000000000000000FFFFFFFF"));
+    public static final BigInteger Q = SecP384R1Curve.q;
 
     protected int[] x;
 
@@ -96,7 +95,7 @@ public class SecP384R1FieldElement extends ECFieldElement.AbstractFp
     {
 //        return multiply(b.invert());
         int[] z = Nat.create(12);
-        SecP384R1Field.inv(((SecP384R1FieldElement)b).x, z);
+        Mod.invert(SecP384R1Field.P, ((SecP384R1FieldElement)b).x, z);
         SecP384R1Field.multiply(z, x, z);
         return new SecP384R1FieldElement(z);
     }
@@ -119,7 +118,7 @@ public class SecP384R1FieldElement extends ECFieldElement.AbstractFp
     {
 //        return new SecP384R1FieldElement(toBigInteger().modInverse(Q));
         int[] z = Nat.create(12);
-        SecP384R1Field.inv(x, z);
+        Mod.invert(SecP384R1Field.P, x, z);
         return new SecP384R1FieldElement(z);
     }
 

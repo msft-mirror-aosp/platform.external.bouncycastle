@@ -56,7 +56,14 @@ public class AlgorithmParameterGeneratorSpi
 
         int certainty = PrimeCertaintyCalculator.getDefaultCertainty(strength);
 
-        pGen.init(strength, certainty, CryptoServicesRegistrar.getSecureRandom(random));
+        if (random != null)
+        {
+            pGen.init(strength, certainty, random);
+        }
+        else
+        {
+            pGen.init(strength, certainty, CryptoServicesRegistrar.getSecureRandom());
+        }
 
         DHParameters p = pGen.generateParameters();
 

@@ -74,7 +74,7 @@ public class PolicyConstraints
 
     public static PolicyConstraints fromExtensions(Extensions extensions)
     {
-        return getInstance(Extensions.getExtensionParsedValue(extensions, Extension.policyConstraints));
+        return PolicyConstraints.getInstance(extensions.getExtensionParsedValue(Extension.policyConstraints));
     }
 
     public BigInteger getRequireExplicitPolicyMapping()
@@ -89,7 +89,7 @@ public class PolicyConstraints
 
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector v = new ASN1EncodableVector(2);
+        ASN1EncodableVector v = new ASN1EncodableVector();
 
         if (requireExplicitPolicyMapping != null)
         {

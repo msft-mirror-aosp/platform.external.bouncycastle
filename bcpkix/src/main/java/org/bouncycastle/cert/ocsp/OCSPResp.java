@@ -74,7 +74,7 @@ public class OCSPResp
 
     public int getStatus()
     {
-        return this.resp.getResponseStatus().getIntValue();
+        return this.resp.getResponseStatus().getValue().intValue();
     }
 
     public Object getResponseObject()

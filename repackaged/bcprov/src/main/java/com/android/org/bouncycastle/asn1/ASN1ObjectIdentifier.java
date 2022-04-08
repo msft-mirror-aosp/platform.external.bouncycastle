@@ -13,6 +13,7 @@ import com.android.org.bouncycastle.util.Arrays;
  * Class representing the ASN.1 OBJECT IDENTIFIER type.
  * @hide This class is not part of the Android public SDK API
  */
+@libcore.api.CorePlatformApi
 public class ASN1ObjectIdentifier
     extends ASN1Primitive
 {
@@ -27,6 +28,7 @@ public class ASN1ObjectIdentifier
      * @return an ASN1ObjectIdentifier instance, or null.
      * @throws IllegalArgumentException if the object cannot be converted.
      */
+    @libcore.api.CorePlatformApi
     public static ASN1ObjectIdentifier getInstance(
         Object obj)
     {
@@ -172,12 +174,13 @@ public class ASN1ObjectIdentifier
      *
      * @param identifier a string representation of an OID.
      */
+    @libcore.api.CorePlatformApi
     public ASN1ObjectIdentifier(
         String identifier)
     {
         if (identifier == null)
         {
-            throw new NullPointerException("'identifier' cannot be null");
+            throw new IllegalArgumentException("'identifier' cannot be null");
         }
         if (!isValidIdentifier(identifier))
         {
@@ -209,6 +212,7 @@ public class ASN1ObjectIdentifier
      *
      * @return the string representation of the OID carried by this object.
      */
+    @libcore.api.CorePlatformApi
     public String getId()
     {
         return identifier;
@@ -331,9 +335,15 @@ public class ASN1ObjectIdentifier
         return 1 + StreamUtil.calculateBodyLength(length) + length;
     }
 
-    void encode(ASN1OutputStream out, boolean withTag) throws IOException
+    void encode(
+        ASN1OutputStream out)
+        throws IOException
     {
-        out.writeEncoded(withTag, BERTags.OBJECT_IDENTIFIER, getBody());
+        byte[] enc = getBody();
+
+        out.write(BERTags.OBJECT_IDENTIFIER);
+        out.writeLength(enc.length);
+        out.write(enc);
     }
 
     public int hashCode()
@@ -365,40 +375,35 @@ public class ASN1ObjectIdentifier
     private static boolean isValidBranchID(
         String branchID, int start)
     {
-        int digitCount = 0;
+        boolean periodAllowed = false;
 
         int pos = branchID.length();
         while (--pos >= start)
         {
             char ch = branchID.charAt(pos);
 
+            // TODO Leading zeroes?
+            if ('0' <= ch && ch <= '9')
+            {
+                periodAllowed = true;
+                continue;
+            }
+
             if (ch == '.')
             {
-                if (0 == digitCount
-                    || (digitCount > 1 && branchID.charAt(pos + 1) == '0'))
+                if (!periodAllowed)
                 {
                     return false;
                 }
 
-                digitCount = 0;
+                periodAllowed = false;
+                continue;
             }
-            else if ('0' <= ch && ch <= '9')
-            {
-                ++digitCount;
-            }
-            else
-            {
-                return false;
-            }
-        }
 
-        if (0 == digitCount
-            || (digitCount > 1 && branchID.charAt(pos + 1) == '0'))
-        {
             return false;
         }
 
-        return true;
+        return periodAllowed;
     }
 
     private static boolean isValidIdentifier(

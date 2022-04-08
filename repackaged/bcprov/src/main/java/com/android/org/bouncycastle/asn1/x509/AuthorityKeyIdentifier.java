@@ -38,9 +38,9 @@ import com.android.org.bouncycastle.util.encoders.Hex;
 public class AuthorityKeyIdentifier
     extends ASN1Object
 {
-    ASN1OctetString keyidentifier = null;
-    GeneralNames certissuer = null;
-    ASN1Integer certserno = null;
+    ASN1OctetString keyidentifier=null;
+    GeneralNames certissuer=null;
+    ASN1Integer certserno=null;
 
     public static AuthorityKeyIdentifier getInstance(
         ASN1TaggedObject obj,
@@ -66,7 +66,7 @@ public class AuthorityKeyIdentifier
 
     public static AuthorityKeyIdentifier fromExtensions(Extensions extensions)
     {
-        return getInstance(Extensions.getExtensionParsedValue(extensions, Extension.authorityKeyIdentifier));
+         return AuthorityKeyIdentifier.getInstance(extensions.getExtensionParsedValue(Extension.authorityKeyIdentifier));
     }
 
     protected AuthorityKeyIdentifier(
@@ -76,7 +76,7 @@ public class AuthorityKeyIdentifier
 
         while (e.hasMoreElements())
         {
-            ASN1TaggedObject o = ASN1TaggedObject.getInstance(e.nextElement());
+            ASN1TaggedObject o = DERTaggedObject.getInstance(e.nextElement());
 
             switch (o.getTagNo())
             {
@@ -142,8 +142,8 @@ public class AuthorityKeyIdentifier
         digest.doFinal(resBuf, 0);
 
         this.keyidentifier = new DEROctetString(resBuf);
-        this.certissuer = name;
-        this.certserno = (serialNumber != null) ? new ASN1Integer(serialNumber) : null;
+        this.certissuer = GeneralNames.getInstance(name.toASN1Primitive());
+        this.certserno = new ASN1Integer(serialNumber);
     }
 
     /**
@@ -210,7 +210,7 @@ public class AuthorityKeyIdentifier
      */
     public ASN1Primitive toASN1Primitive()
     {
-        ASN1EncodableVector v = new ASN1EncodableVector(3);
+        ASN1EncodableVector  v = new ASN1EncodableVector();
 
         if (keyidentifier != null)
         {
@@ -227,13 +227,12 @@ public class AuthorityKeyIdentifier
             v.add(new DERTaggedObject(false, 2, certserno));
         }
 
+
         return new DERSequence(v);
     }
 
     public String toString()
     {
-        String keyID = (keyidentifier != null) ? Hex.toHexString(keyidentifier.getOctets()) : "null";
-
-        return "AuthorityKeyIdentifier: KeyID(" + keyID + ")";
+        return ("AuthorityKeyIdentifier: KeyID(" + ((keyidentifier != null) ? Hex.toHexString(this.keyidentifier.getOctets()) : "null") + ")");
     }
 }

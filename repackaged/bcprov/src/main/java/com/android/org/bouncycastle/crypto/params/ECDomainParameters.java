@@ -3,13 +3,11 @@ package com.android.org.bouncycastle.crypto.params;
 
 import java.math.BigInteger;
 
-import com.android.org.bouncycastle.asn1.x9.X9ECParameters;
 import com.android.org.bouncycastle.math.ec.ECAlgorithms;
 import com.android.org.bouncycastle.math.ec.ECConstants;
 import com.android.org.bouncycastle.math.ec.ECCurve;
 import com.android.org.bouncycastle.math.ec.ECPoint;
 import com.android.org.bouncycastle.util.Arrays;
-import com.android.org.bouncycastle.util.BigIntegers;
 
 /**
  * @hide This class is not part of the Android public SDK API
@@ -17,18 +15,12 @@ import com.android.org.bouncycastle.util.BigIntegers;
 public class ECDomainParameters
     implements ECConstants
 {
-    private final ECCurve     curve;
-    private final byte[]      seed;
-    private final ECPoint     G;
-    private final BigInteger  n;
-    private final BigInteger  h;
-
+    private ECCurve     curve;
+    private byte[]      seed;
+    private ECPoint     G;
+    private BigInteger  n;
+    private BigInteger  h;
     private BigInteger  hInv = null;
-
-    public ECDomainParameters(X9ECParameters x9)
-    {
-        this(x9.getCurve(), x9.getG(), x9.getN(), x9.getH(), x9.getSeed());
-    }
 
     public ECDomainParameters(
         ECCurve     curve,
@@ -65,7 +57,7 @@ public class ECDomainParameters
         // we can't check for h == null here as h is optional in X9.62 as it is not required for ECDSA
 
         this.curve = curve;
-        this.G = validatePublicPoint(curve, G);
+        this.G = validate(curve, G);
         this.n = n;
         this.h = h;
         this.seed = Arrays.clone(seed);
@@ -95,7 +87,7 @@ public class ECDomainParameters
     {
         if (hInv == null)
         {
-            hInv = BigIntegers.modOddInverseVar(n, h);
+            hInv = h.modInverse(n);
         }
         return hInv;
     }
@@ -113,56 +105,33 @@ public class ECDomainParameters
             return true;
         }
 
-        if (!(obj instanceof ECDomainParameters))
+        if ((obj instanceof ECDomainParameters))
         {
-            return false;
+            ECDomainParameters other = (ECDomainParameters)obj;
+
+            return this.curve.equals(other.curve) && this.G.equals(other.G) && this.n.equals(other.n) && this.h.equals(other.h);
         }
 
-        ECDomainParameters other = (ECDomainParameters)obj;
-
-        return this.curve.equals(other.curve)
-            && this.G.equals(other.G)
-            && this.n.equals(other.n);
+        return false;
     }
 
     public int hashCode()
     {
-//        return Arrays.hashCode(new Object[]{ curve, G, n });
-        int hc = 4;
-        hc *= 257;
-        hc ^= curve.hashCode();
-        hc *= 257;
+        int hc = curve.hashCode();
+        hc *= 37;
         hc ^= G.hashCode();
-        hc *= 257;
+        hc *= 37;
         hc ^= n.hashCode();
+        hc *= 37;
+        hc ^= h.hashCode();
         return hc;
     }
 
-    public BigInteger validatePrivateScalar(BigInteger d)
+    static ECPoint validate(ECCurve c, ECPoint q)
     {
-        if (null == d)
+        if (q == null)
         {
-            throw new NullPointerException("Scalar cannot be null");
-        }
-
-        if (d.compareTo(ECConstants.ONE) < 0  || (d.compareTo(getN()) >= 0))
-        {
-            throw new IllegalArgumentException("Scalar is not in the interval [1, n - 1]");
-        }
-
-        return d;
-    }
-
-    public ECPoint validatePublicPoint(ECPoint q)
-    {
-        return validatePublicPoint(getCurve(), q);
-    }
-
-    static ECPoint validatePublicPoint(ECCurve c, ECPoint q)
-    {
-        if (null == q)
-        {
-            throw new NullPointerException("Point cannot be null");
+            throw new IllegalArgumentException("Point has null value");
         }
 
         q = ECAlgorithms.importPoint(c, q).normalize();
