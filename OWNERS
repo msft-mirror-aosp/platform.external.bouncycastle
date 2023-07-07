@@ -1,7 +1,2 @@
 # Bug component: 684135
-prb@google.com
-
-mast@google.com
-miguelaranda@google.com
-rpl@google.com
-sorinbasca@google.com
+include platform/libcore:/OWNERS
