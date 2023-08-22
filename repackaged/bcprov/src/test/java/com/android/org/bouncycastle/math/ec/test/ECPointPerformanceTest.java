@@ -1,4 +1,5 @@
-package org.bouncycastle.math.ec.test;
+/* GENERATED SOURCE. DO NOT MODIFY. */
+package com.android.org.bouncycastle.math.ec.test;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -9,17 +10,18 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import junit.framework.TestCase;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.asn1.x9.ECNamedCurveTable;
-import org.bouncycastle.asn1.x9.X9ECParameters;
-import org.bouncycastle.crypto.ec.CustomNamedCurves;
-import org.bouncycastle.math.ec.ECCurve;
-import org.bouncycastle.math.ec.ECPoint;
-import org.bouncycastle.util.Times;
+import com.android.org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import com.android.org.bouncycastle.asn1.x9.ECNamedCurveTable;
+import com.android.org.bouncycastle.asn1.x9.X9ECParameters;
+import com.android.org.bouncycastle.crypto.ec.CustomNamedCurves;
+import com.android.org.bouncycastle.math.ec.ECCurve;
+import com.android.org.bouncycastle.math.ec.ECPoint;
+import com.android.org.bouncycastle.util.Times;
 
 /**
  * Compares the performance of the the window NAF point multiplication against conventional point
  * multiplication.
+ * @hide This class is not part of the Android public SDK API
  */
 public class ECPointPerformanceTest extends TestCase
 {
