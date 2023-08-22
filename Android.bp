@@ -236,6 +236,21 @@ java_library_host {
     static_libs: ["bouncycastle-unbundled"],
 }
 
+java_test_host {
+    name: "bouncycastle-host-tests",
+    srcs: [
+        "bcprov/src/test/java/**/*.java",
+    ],
+    test_options: {
+        unit_test: true,
+    },
+    static_libs: [
+        "bouncycastle-unbundled",
+        "junit",
+    ],
+    test_suites: ["general-tests"],
+}
+
 // Bouncycastle subset for use by frameworks/opt/net/ike project.
 //
 // Avoids including the whole of bouncycastle_unbundled in ike.
