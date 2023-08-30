@@ -19,6 +19,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import android.platform.test.annotations.LargeTest;
+
 public class ECAlgorithmsTest extends TestCase
 {
     private static final int SCALE = 4;
@@ -32,6 +34,7 @@ public class ECAlgorithmsTest extends TestCase
     }
 
     // TODO Ideally, mark this test not to run by default
+    @LargeTest
     public void testSumOfMultipliesComplete()
     {
         ArrayList x9s = getTestCurves();
@@ -51,6 +54,7 @@ public class ECAlgorithmsTest extends TestCase
     }
 
     // TODO Ideally, mark this test not to run by default
+    @LargeTest
     public void testSumOfTwoMultipliesComplete()
     {
         ArrayList x9s = getTestCurves();
