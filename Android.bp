@@ -265,6 +265,7 @@ java_test_host {
     static_libs: [
         "bouncycastle-unbundled",
         "junit",
+        "platform-test-annotations",
     ],
     test_suites: ["general-tests"],
 }
