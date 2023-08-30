@@ -28,6 +28,8 @@ import org.bouncycastle.util.BigIntegers;
 import org.bouncycastle.util.Integers;
 import org.bouncycastle.util.encoders.Hex;
 
+import android.platform.test.annotations.LargeTest;
+
 /**
  * Test class for {@link org.bouncycastle.math.ec.ECPoint ECPoint}. All
  * literature values are taken from "Guide to elliptic curve cryptography",
@@ -551,6 +553,7 @@ public class ECPointTest extends TestCase
      * <code>implTestMultiply</code> and <code>implTestEncoding</code> for
      * the standard elliptic curves as given in <code>SECNamedCurves</code>.
      */
+    @LargeTest
     public void testAddSubtractMultiplyTwiceEncoding()
     {
         Set names = new HashSet(enumToList(ECNamedCurveTable.getNames()));
