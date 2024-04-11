@@ -13,13 +13,14 @@ import java.security.spec.AlgorithmParameterSpec;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherSpi;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.ShortBufferException;
 
 import org.bouncycastle.crypto.BlockCipher;
+import org.bouncycastle.crypto.BufferedBlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.KeyEncoder;
 import org.bouncycastle.crypto.agreement.ECDHBasicAgreement;
@@ -41,7 +42,7 @@ import org.bouncycastle.crypto.params.IESWithCipherParameters;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser;
 import org.bouncycastle.crypto.util.DigestFactory;
-import org.bouncycastle.jcajce.provider.asymmetric.util.ECUtil;
+import org.bouncycastle.jcajce.provider.asymmetric.util.BaseCipherSpi;
 import org.bouncycastle.jcajce.provider.asymmetric.util.IESUtil;
 import org.bouncycastle.jcajce.provider.util.BadBlockException;
 import org.bouncycastle.jcajce.util.BCJcaJceHelper;
@@ -54,7 +55,7 @@ import org.bouncycastle.util.Strings;
 
 
 public class IESCipher
-    extends CipherSpi
+    extends BaseCipherSpi
 {
     private final JcaJceHelper helper = new BCJcaJceHelper();
 
@@ -83,16 +84,9 @@ public class IESCipher
 
     public int engineGetBlockSize()
     {
-        if (engine.getCipher() != null)
-        {
-            return engine.getCipher().getBlockSize();
-        }
-        else
-        {
-            return 0;
-        }
+        BufferedBlockCipher cipher = engine.getCipher();
+        return cipher == null ? 0 : cipher.getBlockSize();
     }
-
 
     public int engineGetKeySize(Key key)
     {
@@ -105,7 +99,6 @@ public class IESCipher
             throw new IllegalArgumentException("not an EC key");
         }
     }
-
 
     public byte[] engineGetIV()
     {
@@ -170,24 +163,32 @@ public class IESCipher
         {
             ECCurve c = ((ECKeyParameters)key).getParameters().getCurve();
             int feSize = (c.getFieldSize() + 7) / 8; 
-            len2 = 2 * feSize;
+            len2 = 1 + 2 * feSize;
         }
         else
         {
             len2 = 0;
         }
 
+        int inLen = buffer.size() + inputLen;
         if (engine.getCipher() == null)
         {
-            len3 = inputLen;
+            if (state == Cipher.DECRYPT_MODE || state == Cipher.UNWRAP_MODE)
+            {
+                len3 = inLen - len1 - len2;
+            }
+            else
+            {
+                len3 = inLen;
+            }
         }
         else if (state == Cipher.ENCRYPT_MODE || state == Cipher.WRAP_MODE)
         {
-            len3 = engine.getCipher().getOutputSize(inputLen);
+            len3 = engine.getCipher().getOutputSize(inLen);
         }
         else if (state == Cipher.DECRYPT_MODE || state == Cipher.UNWRAP_MODE)
         {
-            len3 = engine.getCipher().getOutputSize(inputLen - len1 - len2);
+            len3 = engine.getCipher().getOutputSize(inLen - len1 - len2);
         }
         else
         {
@@ -196,17 +197,16 @@ public class IESCipher
 
         if (state == Cipher.ENCRYPT_MODE || state == Cipher.WRAP_MODE)
         {
-            return buffer.size() + len1 + 1 + len2 + len3;
+            return len1 + len2 + len3;
         }
         else if (state == Cipher.DECRYPT_MODE || state == Cipher.UNWRAP_MODE)
         {
-            return buffer.size() - len1 - len2 + len3;
+            return len3;
         }
         else
         {
             throw new IllegalStateException("cipher not initialised");
         }
-
     }
 
     public void engineSetPadding(String padding)
@@ -268,16 +268,10 @@ public class IESCipher
     {
         otherKeyParameter = null;
 
-        // Use default parameters (including cipher key size) if none are specified
-        if (engineSpec == null)
+        // NOTE: For secure usage, sender and receiver should agree on a fixed value for the nonce.
+        if (engineSpec == null && ivLength == 0)
         {
-            byte[] nonce = null;
-            if (ivLength != 0 && opmode == Cipher.ENCRYPT_MODE)
-            {
-                nonce = new byte[ivLength];
-                random.nextBytes(nonce);
-            }
-            this.engineSpec = IESUtil.guessParameterSpec(engine.getCipher(), nonce);
+            this.engineSpec = IESUtil.guessParameterSpec(engine.getCipher(), null);
         }
         else if (engineSpec instanceof IESParameterSpec)
         {
@@ -307,7 +301,7 @@ public class IESCipher
                 IESKey ieKey = (IESKey)key;
 
                 this.key = ECUtils.generatePublicKeyParameter(ieKey.getPublic());
-                this.otherKeyParameter = ECUtil.generatePrivateKeyParameter(ieKey.getPrivate());
+                this.otherKeyParameter = ECUtils.generatePrivateKeyParameter(ieKey.getPrivate());
             }
             else
             {
@@ -318,14 +312,14 @@ public class IESCipher
         {
             if (key instanceof PrivateKey)
             {
-                this.key = ECUtil.generatePrivateKeyParameter((PrivateKey)key);
+                this.key = ECUtils.generatePrivateKeyParameter((PrivateKey)key);
             }
             else if (key instanceof IESKey)
             {
                 IESKey ieKey = (IESKey)key;
 
                 this.otherKeyParameter = ECUtils.generatePublicKeyParameter(ieKey.getPublic());
-                this.key = ECUtil.generatePrivateKeyParameter(ieKey.getPrivate());
+                this.key = ECUtils.generatePrivateKeyParameter(ieKey.getPrivate());
             }
             else
             {
@@ -409,14 +403,13 @@ public class IESCipher
             engineSpec.getMacKeySize(),
             engineSpec.getCipherKeySize());
 
-        if (engineSpec.getNonce() != null)
+        byte[] engineSpecNonce = engineSpec.getNonce();
+        if (engineSpecNonce != null)
         {
-            params = new ParametersWithIV(params, engineSpec.getNonce());
+            params = new ParametersWithIV(params, engineSpecNonce);
         }
 
         final ECDomainParameters ecParams = ((ECKeyParameters)key).getParameters();
-
-        final byte[] V;
 
         if (otherKeyParameter != null)
         {
@@ -496,6 +489,7 @@ public class IESCipher
     {
 
         byte[] buf = engineDoFinal(input, inputOffset, inputLength);
+
         System.arraycopy(buf, 0, output, outputOffset, buf.length);
         return buf.length;
     }
@@ -509,9 +503,41 @@ public class IESCipher
     {
         public ECIES()
         {
+            this(DigestFactory.createSHA1(), DigestFactory.createSHA1());
+        }
+
+        public ECIES(Digest kdfDigest, Digest macDigest)
+        {
             super(new IESEngine(new ECDHBasicAgreement(),
-                new KDF2BytesGenerator(DigestFactory.createSHA1()),
-                new HMac(DigestFactory.createSHA1())));
+                    new KDF2BytesGenerator(kdfDigest),
+                    new HMac(macDigest)));
+        }
+    }
+
+    static public class ECIESwithSHA256
+            extends ECIES
+    {
+        public ECIESwithSHA256()
+        {
+            super(DigestFactory.createSHA256(), DigestFactory.createSHA256());
+        }
+    }
+
+    static public class ECIESwithSHA384
+            extends ECIES
+    {
+        public ECIESwithSHA384()
+        {
+            super(DigestFactory.createSHA384(), DigestFactory.createSHA384());
+        }
+    }
+
+    static public class ECIESwithSHA512
+            extends ECIES
+    {
+        public ECIESwithSHA512()
+        {
+            super(DigestFactory.createSHA512(), DigestFactory.createSHA512());
         }
     }
 
@@ -520,10 +546,15 @@ public class IESCipher
     {
         public ECIESwithCipher(BlockCipher cipher, int ivLength)
         {
+            this(cipher, ivLength, DigestFactory.createSHA1(), DigestFactory.createSHA1());
+        }
+
+        public ECIESwithCipher(BlockCipher cipher, int ivLength, Digest kdfDigest, Digest macDigest)
+        {
             super(new IESEngine(new ECDHBasicAgreement(),
-                            new KDF2BytesGenerator(DigestFactory.createSHA1()),
-                            new HMac(DigestFactory.createSHA1()),
-                            new PaddedBufferedBlockCipher(cipher)), ivLength);
+                    new KDF2BytesGenerator(kdfDigest),
+                    new HMac(macDigest),
+                    new PaddedBufferedBlockCipher(cipher)), ivLength);
         }
     }
 
@@ -532,7 +563,34 @@ public class IESCipher
     {
         public ECIESwithDESedeCBC()
         {
-            super(new CBCBlockCipher(new DESedeEngine()), 8);
+            super(CBCBlockCipher.newInstance(new DESedeEngine()), 8);
+        }
+    }
+
+    static public class ECIESwithSHA256andDESedeCBC
+            extends ECIESwithCipher
+    {
+        public ECIESwithSHA256andDESedeCBC()
+        {
+            super(CBCBlockCipher.newInstance(new DESedeEngine()), 8, DigestFactory.createSHA256(), DigestFactory.createSHA256());
+        }
+    }
+
+    static public class ECIESwithSHA384andDESedeCBC
+            extends ECIESwithCipher
+    {
+        public ECIESwithSHA384andDESedeCBC()
+        {
+            super(CBCBlockCipher.newInstance(new DESedeEngine()), 8, DigestFactory.createSHA384(), DigestFactory.createSHA384());
+        }
+    }
+
+    static public class ECIESwithSHA512andDESedeCBC
+            extends ECIESwithCipher
+    {
+        public ECIESwithSHA512andDESedeCBC()
+        {
+            super(CBCBlockCipher.newInstance(new DESedeEngine()), 8, DigestFactory.createSHA512(), DigestFactory.createSHA512());
         }
     }
 
@@ -541,7 +599,34 @@ public class IESCipher
     {
         public ECIESwithAESCBC()
         {
-            super(new CBCBlockCipher(new AESEngine()), 16);
+            super(CBCBlockCipher.newInstance(AESEngine.newInstance()), 16);
+        }
+    }
+
+    static public class ECIESwithSHA256andAESCBC
+            extends ECIESwithCipher
+    {
+        public ECIESwithSHA256andAESCBC()
+        {
+            super(CBCBlockCipher.newInstance(AESEngine.newInstance()), 16, DigestFactory.createSHA256(), DigestFactory.createSHA256());
+        }
+    }
+
+    static public class ECIESwithSHA384andAESCBC
+            extends ECIESwithCipher
+    {
+        public ECIESwithSHA384andAESCBC()
+        {
+            super(CBCBlockCipher.newInstance(AESEngine.newInstance()), 16, DigestFactory.createSHA384(), DigestFactory.createSHA384());
+        }
+    }
+
+    static public class ECIESwithSHA512andAESCBC
+            extends ECIESwithCipher
+    {
+        public ECIESwithSHA512andAESCBC()
+        {
+            super(CBCBlockCipher.newInstance(AESEngine.newInstance()), 16, DigestFactory.createSHA512(), DigestFactory.createSHA512());
         }
     }
 }

@@ -2,15 +2,17 @@ package org.bouncycastle.crypto.engines;
 
 import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.OutputLengthException;
+import org.bouncycastle.crypto.constraints.DefaultServiceProperties;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.util.Pack;
 
 /**
  * SM4 Block Cipher - SM4 is a 128 bit block cipher with a 128 bit key.
  * <p>
- *     The implementation here is based on the document <a href="http://eprint.iacr.org/2008/329.pdf">http://eprint.iacr.org/2008/329.pdf</a>
+ *     The implementation here is based on the document <a href="https://eprint.iacr.org/2008/329.pdf">https://eprint.iacr.org/2008/329.pdf</a>
  *     by Whitfield Diffie and George Ledin, which is a translation of Prof. LU Shu-wang's original standard.
  * </p>
  */
@@ -190,6 +192,9 @@ public class SM4Engine
         {
             throw new IllegalArgumentException("invalid parameter passed to SM4 init - " + params.getClass().getName());
         }
+
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(
+            this.getAlgorithmName(), 128, params, Utils.getPurpose(forEncryption)));
     }
 
     public String getAlgorithmName()

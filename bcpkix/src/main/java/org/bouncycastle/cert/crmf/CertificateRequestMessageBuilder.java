@@ -13,7 +13,6 @@ import org.bouncycastle.asn1.ASN1Null;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.DERSequence;
-import org.bouncycastle.asn1.DERTaggedObject;
 import org.bouncycastle.asn1.crmf.AttributeTypeAndValue;
 import org.bouncycastle.asn1.crmf.CertReqMsg;
 import org.bouncycastle.asn1.crmf.CertRequest;
@@ -32,6 +31,9 @@ import org.bouncycastle.asn1.x509.Time;
 import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.operator.ContentSigner;
 
+/**
+ * Builder for high-level objects built on {@link org.bouncycastle.asn1.crmf.CertReqMsg}.
+ */
 public class CertificateRequestMessageBuilder
 {
     private final BigInteger certReqId;
@@ -47,6 +49,7 @@ public class CertificateRequestMessageBuilder
     private POPOPrivKey popoPrivKey;
     private ASN1Null popRaVerified;
     private PKMACValue agreeMAC;
+    private AttributeTypeAndValue[] regInfo;
 
     public CertificateRequestMessageBuilder(BigInteger certReqId)
     {
@@ -55,6 +58,14 @@ public class CertificateRequestMessageBuilder
         this.extGenerator = new ExtensionsGenerator();
         this.templateBuilder = new CertTemplateBuilder();
         this.controls = new ArrayList();
+        this.regInfo = null;
+    }
+
+    public CertificateRequestMessageBuilder setRegInfo(AttributeTypeAndValue[] regInfo)
+    {
+        this.regInfo = regInfo;
+
+        return this;
     }
 
     public CertificateRequestMessageBuilder setPublicKey(SubjectPublicKeyInfo publicKey)
@@ -97,12 +108,21 @@ public class CertificateRequestMessageBuilder
         return this;
     }
 
+    public CertificateRequestMessageBuilder setSerialNumber(ASN1Integer serialNumber)
+    {
+        if (serialNumber != null)
+        {
+            templateBuilder.setSerialNumber(serialNumber);
+        }
+
+        return this;
+    }
+
     /**
      * Request a validity period for the certificate. Either, but not both, of the date parameters may be null.
      *
      * @param notBeforeDate not before date for certificate requested.
-     * @param notAfterDate not after date for the certificate requested.
-     *
+     * @param notAfterDate  not after date for the certificate requested.
      * @return the current builder.
      */
     public CertificateRequestMessageBuilder setValidity(Date notBeforeDate, Date notAfterDate)
@@ -124,8 +144,8 @@ public class CertificateRequestMessageBuilder
 
     public CertificateRequestMessageBuilder addExtension(
         ASN1ObjectIdentifier oid,
-        boolean              critical,
-        ASN1Encodable        value)
+        boolean critical,
+        ASN1Encodable value)
         throws CertIOException
     {
         CRMFUtil.addExtension(extGenerator, oid, critical, value);
@@ -135,8 +155,8 @@ public class CertificateRequestMessageBuilder
 
     public CertificateRequestMessageBuilder addExtension(
         ASN1ObjectIdentifier oid,
-        boolean              critical,
-        byte[]               value)
+        boolean critical,
+        byte[] value)
     {
         extGenerator.addExtension(oid, critical, value);
 
@@ -183,7 +203,7 @@ public class CertificateRequestMessageBuilder
         }
         if (type != ProofOfPossession.TYPE_KEY_ENCIPHERMENT && type != ProofOfPossession.TYPE_KEY_AGREEMENT)
         {
-            throw new IllegalArgumentException("type must be ProofOfPossession.TYPE_KEY_ENCIPHERMENT || ProofOfPossession.TYPE_KEY_AGREEMENT");
+            throw new IllegalArgumentException("type must be ProofOfPossession.TYPE_KEY_ENCIPHERMENT or ProofOfPossession.TYPE_KEY_AGREEMENT");
         }
 
         this.popoType = type;
@@ -239,7 +259,7 @@ public class CertificateRequestMessageBuilder
     public CertificateRequestMessage build()
         throws CRMFException
     {
-        ASN1EncodableVector v = new ASN1EncodableVector();
+        ASN1EncodableVector v = new ASN1EncodableVector(3);
 
         v.add(new ASN1Integer(certReqId));
 
@@ -266,18 +286,16 @@ public class CertificateRequestMessageBuilder
 
         CertRequest request = CertRequest.getInstance(new DERSequence(v));
 
-        v = new ASN1EncodableVector();
-
-        v.add(request);
-
+        ProofOfPossession proofOfPossession;
         if (popSigner != null)
         {
             CertTemplate template = request.getCertTemplate();
 
+            ProofOfPossessionSigningKeyBuilder builder;
             if (template.getSubject() == null || template.getPublicKey() == null)
             {
                 SubjectPublicKeyInfo pubKeyInfo = request.getCertTemplate().getPublicKey();
-                ProofOfPossessionSigningKeyBuilder builder = new ProofOfPossessionSigningKeyBuilder(pubKeyInfo);
+                builder = new ProofOfPossessionSigningKeyBuilder(pubKeyInfo);
 
                 if (sender != null)
                 {
@@ -285,35 +303,35 @@ public class CertificateRequestMessageBuilder
                 }
                 else
                 {
-                    PKMACValueGenerator pkmacGenerator = new PKMACValueGenerator(pkmacBuilder);
-
-                    builder.setPublicKeyMac(pkmacGenerator, password);
+                    builder.setPublicKeyMac(pkmacBuilder, password);
                 }
-
-                v.add(new ProofOfPossession(builder.build(popSigner)));
             }
             else
             {
-                ProofOfPossessionSigningKeyBuilder builder = new ProofOfPossessionSigningKeyBuilder(request);
-
-                v.add(new ProofOfPossession(builder.build(popSigner)));
+                builder = new ProofOfPossessionSigningKeyBuilder(request);
             }
+
+            proofOfPossession = new ProofOfPossession(builder.build(popSigner));
         }
         else if (popoPrivKey != null)
         {
-            v.add(new ProofOfPossession(popoType, popoPrivKey));
+            proofOfPossession = new ProofOfPossession(popoType, popoPrivKey);
         }
         else if (agreeMAC != null)
         {
-            v.add(new ProofOfPossession(ProofOfPossession.TYPE_KEY_AGREEMENT,
-                    POPOPrivKey.getInstance(new DERTaggedObject(false, POPOPrivKey.agreeMAC, agreeMAC))));
-
+            proofOfPossession = new ProofOfPossession(ProofOfPossession.TYPE_KEY_AGREEMENT, new POPOPrivKey(agreeMAC));
         }
         else if (popRaVerified != null)
         {
-            v.add(new ProofOfPossession());
+            proofOfPossession = new ProofOfPossession();
+        }
+        else
+        {
+            proofOfPossession = new ProofOfPossession();
         }
 
-        return new CertificateRequestMessage(CertReqMsg.getInstance(new DERSequence(v)));
+        CertReqMsg certReqMsg = new CertReqMsg(request, proofOfPossession, regInfo);
+
+        return new CertificateRequestMessage(certReqMsg);
     }
 }

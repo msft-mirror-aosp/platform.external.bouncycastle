@@ -4,8 +4,12 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
+import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.bouncycastle.crypto.constraints.ConstraintUtils;
+import org.bouncycastle.crypto.constraints.DefaultServiceProperties;
 import org.bouncycastle.crypto.digests.SM3Digest;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.params.ECKeyParameters;
@@ -18,6 +22,7 @@ import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.FixedPointCombMultiplier;
 import org.bouncycastle.util.Arrays;
 import org.bouncycastle.util.BigIntegers;
+import org.bouncycastle.util.Bytes;
 import org.bouncycastle.util.Memoable;
 import org.bouncycastle.util.Pack;
 
@@ -91,6 +96,8 @@ public class SM2Engine
         }
 
         curveLength = (ecParams.getCurve().getFieldSize() + 7) / 8;
+
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties("SM2", ConstraintUtils.bitsOfSecurityFor(ecParams.getCurve()), ecKey, Utils.getPurpose(forEncryption)));
     }
 
     public byte[] processBlock(
@@ -99,6 +106,11 @@ public class SM2Engine
         int inLen)
         throws InvalidCipherTextException
     {
+        if ((inOff + inLen) > in.length || inLen == 0)
+        {
+            throw new DataLengthException("input buffer too short");
+        }
+
         if (forEncryption)
         {
             return encrypt(in, inOff, inLen);
@@ -277,16 +289,8 @@ public class SM2Engine
             digest.doFinal(buf, 0);
 
             int xorLen = Math.min(digestSize, encData.length - off);
-            xor(encData, buf, off, xorLen);
+            Bytes.xorTo(xorLen, buf, 0, encData, off);
             off += xorLen;
-        }
-    }
-
-    private void xor(byte[] data, byte[] kdfOut, int dOff, int dRemaining)
-    {
-        for (int i = 0; i != dRemaining; i++)
-        {
-            data[dOff + i] ^= kdfOut[i];
         }
     }
 

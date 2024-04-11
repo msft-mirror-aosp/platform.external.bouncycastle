@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collection;
-import java.util.Date;
 
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1Primitive;
@@ -45,8 +44,6 @@ public class TimeStampToken
     CMSSignedData tsToken;
 
     SignerInformation tsaSignerInfo;
-
-    Date genTime;
 
     TimeStampTokenInfo tstInfo;
     
@@ -331,7 +328,7 @@ public class TimeStampToken
     }
 
     // perhaps this should be done using an interface on the ASN.1 classes...
-    private class CertID
+    private static class CertID
     {
         private ESSCertID certID;
         private ESSCertIDv2 certIDv2;

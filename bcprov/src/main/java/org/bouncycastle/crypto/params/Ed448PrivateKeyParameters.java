@@ -26,6 +26,11 @@ public final class Ed448PrivateKeyParameters
         Ed448.generatePrivateKey(random, data);
     }
 
+    public Ed448PrivateKeyParameters(byte[] buf)
+    {
+        this(validate(buf), 0);
+    }
+
     public Ed448PrivateKeyParameters(byte[] buf, int off)
     {
         super(true);
@@ -59,9 +64,7 @@ public final class Ed448PrivateKeyParameters
         {
             if (null == cachedPublicKey)
             {
-                byte[] publicKey = new byte[Ed448.PUBLIC_KEY_SIZE];
-                Ed448.generatePublicKey(data, 0, publicKey, 0);
-                cachedPublicKey = new Ed448PublicKeyParameters(publicKey, 0);
+                cachedPublicKey = new Ed448PublicKeyParameters(Ed448.generatePublicKey(data, 0));
             }
 
             return cachedPublicKey;
@@ -87,11 +90,28 @@ public final class Ed448PrivateKeyParameters
         {
         case Ed448.Algorithm.Ed448:
         {
+            if (null == ctx)
+            {
+                throw new NullPointerException("'ctx' cannot be null");
+            }
+            if (ctx.length > 255)
+            {
+                throw new IllegalArgumentException("ctx");
+            }
+
             Ed448.sign(data, 0, pk, 0, ctx, msg, msgOff, msgLen, sig, sigOff);
             break;
         }
         case Ed448.Algorithm.Ed448ph:
         {
+            if (null == ctx)
+            {
+                throw new NullPointerException("'ctx' cannot be null");
+            }
+            if (ctx.length > 255)
+            {
+                throw new IllegalArgumentException("ctx");
+            }
             if (Ed448.PREHASH_SIZE != msgLen)
             {
                 throw new IllegalArgumentException("msgLen");
@@ -105,5 +125,14 @@ public final class Ed448PrivateKeyParameters
             throw new IllegalArgumentException("algorithm");
         }
         }
+    }
+
+    private static byte[] validate(byte[] buf)
+    {
+        if (buf.length != KEY_SIZE)
+        {
+            throw new IllegalArgumentException("'buf' must have length " + KEY_SIZE);
+        }
+        return buf;
     }
 }

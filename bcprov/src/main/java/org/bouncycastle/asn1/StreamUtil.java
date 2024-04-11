@@ -8,8 +8,6 @@ import java.nio.channels.FileChannel;
 
 class StreamUtil
 {
-    private static final long  MAX_MEMORY = Runtime.getRuntime().maxMemory();
-
     /**
      * Find out possible longest length, capped by available memory.
      *
@@ -48,67 +46,12 @@ class StreamUtil
             }
         }
 
-        if (MAX_MEMORY > Integer.MAX_VALUE)
+        long maxMemory = Runtime.getRuntime().maxMemory();
+        if (maxMemory > Integer.MAX_VALUE)
         {
             return Integer.MAX_VALUE;
         }
 
-        return (int)MAX_MEMORY;
-    }
-
-    static int calculateBodyLength(
-        int length)
-    {
-        int count = 1;
-
-        if (length > 127)
-        {
-            int size = 1;
-            int val = length;
-
-            while ((val >>>= 8) != 0)
-            {
-                size++;
-            }
-
-            for (int i = (size - 1) * 8; i >= 0; i -= 8)
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    static int calculateTagLength(int tagNo)
-        throws IOException
-    {
-        int length = 1;
-
-        if (tagNo >= 31)
-        {
-            if (tagNo < 128)
-            {
-                length++;
-            }
-            else
-            {
-                byte[] stack = new byte[5];
-                int pos = stack.length;
-
-                stack[--pos] = (byte)(tagNo & 0x7F);
-
-                do
-                {
-                    tagNo >>= 7;
-                    stack[--pos] = (byte)(tagNo & 0x7F | 0x80);
-                }
-                while (tagNo > 127);
-
-                length += stack.length - pos;
-            }
-        }
-
-        return length;
+        return (int)maxMemory;
     }
 }

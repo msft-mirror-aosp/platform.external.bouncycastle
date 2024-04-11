@@ -5,8 +5,10 @@ import java.util.Hashtable;
 
 import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.OutputLengthException;
+import org.bouncycastle.crypto.constraints.DefaultServiceProperties;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithSBox;
 import org.bouncycastle.util.Arrays;
@@ -39,8 +41,8 @@ public class GOST28147Engine
     
     /*
      * class content S-box parameters for encrypting
-     * getting from, see: http://tools.ietf.org/id/draft-popov-cryptopro-cpalgs-01.txt
-     *                    http://tools.ietf.org/id/draft-popov-cryptopro-cpalgs-02.txt
+     * getting from, see: https://tools.ietf.org/id/draft-popov-cryptopro-cpalgs-01.txt
+     *                    https://tools.ietf.org/id/draft-popov-cryptopro-cpalgs-02.txt
      */
     private static byte[] ESbox_Test = {
          0x4,0x2,0xF,0x5,0x9,0x1,0x0,0x8,0xE,0x3,0xB,0xC,0xD,0x7,0xA,0x6,
@@ -160,6 +162,8 @@ public class GOST28147Engine
      */
     public GOST28147Engine()
     {
+        // based on 2012 cryptanolysis results.
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(getAlgorithmName(), 178));
     }
 
     /**
@@ -206,6 +210,8 @@ public class GOST28147Engine
         {
            throw new IllegalArgumentException("invalid parameter passed to GOST28147 init - " + params.getClass().getName());
         }
+
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(getAlgorithmName(), 178, params, Utils.getPurpose(forEncryption)));
     }
 
     public String getAlgorithmName()

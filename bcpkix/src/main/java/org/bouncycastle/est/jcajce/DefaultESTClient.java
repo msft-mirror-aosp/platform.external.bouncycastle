@@ -203,7 +203,7 @@ class DefaultESTClient
 
     }
 
-    private class PrintingOutputStream
+    private static class PrintingOutputStream
         extends OutputStream
     {
         private final OutputStream tgt;
@@ -216,6 +216,7 @@ class DefaultESTClient
         public void write(int b)
             throws IOException
         {
+            // -DM System.out.println
             System.out.print(String.valueOf((char)b));
             tgt.write(b);
         }

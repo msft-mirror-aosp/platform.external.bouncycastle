@@ -33,7 +33,7 @@ public class EAXBlockCipher
 
     private static final byte cTAG = 0x2;
 
-    private SICBlockCipher cipher;
+    private CTRModeCipher cipher;
 
     private boolean forEncryption;
 
@@ -64,7 +64,7 @@ public class EAXBlockCipher
         macBlock = new byte[blockSize];
         associatedTextMac = new byte[mac.getMacSize()];
         nonceMac = new byte[mac.getMacSize()];
-        this.cipher = new SICBlockCipher(cipher);
+        this.cipher = SICBlockCipher.newInstance(cipher);
     }
 
     public String getAlgorithmName()
@@ -126,7 +126,7 @@ public class EAXBlockCipher
         mac.doFinal(nonceMac, 0);
 
         // Same BlockCipher underlies this and the mac, so reuse last key on cipher
-        cipher.init(true, new ParametersWithIV(null, nonceMac));
+        cipher.init(true, new ParametersWithIV(keyParam, nonceMac));
 
         reset();
     }

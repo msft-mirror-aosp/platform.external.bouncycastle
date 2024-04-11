@@ -1,8 +1,10 @@
 package org.bouncycastle.crypto.digests;
 
 
+import org.bouncycastle.crypto.CryptoServicePurpose;
+
 /**
- * implementation of SHA-3 based on following KeccakNISTInterface.c from http://keccak.noekeon.org/
+ * implementation of SHA-3 based on following KeccakNISTInterface.c from https://keccak.noekeon.org/
  * <p>
  * Following the naming conventions used in the C source code to enable easy review of the implementation.
  */
@@ -25,15 +27,26 @@ public class SHA3Digest
 
     public SHA3Digest()
     {
-        this(256);
+        this(256, CryptoServicePurpose.ANY);
+    }
+
+    public SHA3Digest(CryptoServicePurpose purpose)
+    {
+        this(256, purpose);
     }
 
     public SHA3Digest(int bitLength)
     {
-        super(checkBitLength(bitLength));
+        super(checkBitLength(bitLength), CryptoServicePurpose.ANY);
     }
 
-    public SHA3Digest(SHA3Digest source) {
+    public SHA3Digest(int bitLength, CryptoServicePurpose purpose)
+    {
+        super(checkBitLength(bitLength), purpose);
+    }
+
+    public SHA3Digest(SHA3Digest source)
+    {
         super(source);
     }
 

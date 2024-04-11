@@ -29,7 +29,6 @@ import org.bouncycastle.crypto.params.MQVPrivateParameters;
 import org.bouncycastle.crypto.params.MQVPublicParameters;
 import org.bouncycastle.crypto.util.DigestFactory;
 import org.bouncycastle.jcajce.provider.asymmetric.util.BaseAgreementSpi;
-import org.bouncycastle.jcajce.provider.asymmetric.util.ECUtil;
 import org.bouncycastle.jcajce.spec.DHUParameterSpec;
 import org.bouncycastle.jcajce.spec.MQVParameterSpec;
 import org.bouncycastle.jcajce.spec.UserKeyingMaterialSpec;
@@ -170,40 +169,15 @@ public class KeyAgreementSpi
         return null;
     }
 
-    protected void engineInit(
-        Key key,
-        AlgorithmParameterSpec params,
-        SecureRandom random)
+    protected void doInitFromKey(Key key, AlgorithmParameterSpec parameterSpec, SecureRandom random)
         throws InvalidKeyException, InvalidAlgorithmParameterException
     {
-        if (params != null &&
-            !(params instanceof MQVParameterSpec || params instanceof UserKeyingMaterialSpec || params instanceof DHUParameterSpec))
+        if (parameterSpec != null &&
+            !(parameterSpec instanceof MQVParameterSpec || parameterSpec instanceof UserKeyingMaterialSpec || parameterSpec instanceof DHUParameterSpec))
         {
             throw new InvalidAlgorithmParameterException("No algorithm parameters supported");
         }
 
-        initFromKey(key, params);
-    }
-
-    protected void engineInit(
-        Key key,
-        SecureRandom random)
-        throws InvalidKeyException
-    {
-        try
-        {
-            initFromKey(key, null);
-        }
-        catch (InvalidAlgorithmParameterException e)
-        {
-            // this should never occur.
-            throw new InvalidKeyException(e.getMessage());
-        }
-    }
-
-    private void initFromKey(Key key, AlgorithmParameterSpec parameterSpec)
-        throws InvalidKeyException, InvalidAlgorithmParameterException
-    {
         if (agreement instanceof ECMQVBasicAgreement)
         {
             mqvParameters = null;
@@ -220,9 +194,9 @@ public class KeyAgreementSpi
             {
                 MQVPrivateKey mqvPrivKey = (MQVPrivateKey)key;
                 staticPrivKey = (ECPrivateKeyParameters)
-                    ECUtil.generatePrivateKeyParameter(mqvPrivKey.getStaticPrivateKey());
+                    ECUtils.generatePrivateKeyParameter(mqvPrivKey.getStaticPrivateKey());
                 ephemPrivKey = (ECPrivateKeyParameters)
-                    ECUtil.generatePrivateKeyParameter(mqvPrivKey.getEphemeralPrivateKey());
+                    ECUtils.generatePrivateKeyParameter(mqvPrivKey.getEphemeralPrivateKey());
 
                 ephemPubKey = null;
                 if (mqvPrivKey.getEphemeralPublicKey() != null)
@@ -236,9 +210,9 @@ public class KeyAgreementSpi
                 MQVParameterSpec mqvParameterSpec = (MQVParameterSpec)parameterSpec;
 
                 staticPrivKey = (ECPrivateKeyParameters)
-                    ECUtil.generatePrivateKeyParameter((PrivateKey)key);
+                    ECUtils.generatePrivateKeyParameter((PrivateKey)key);
                 ephemPrivKey = (ECPrivateKeyParameters)
-                    ECUtil.generatePrivateKeyParameter(mqvParameterSpec.getEphemeralPrivateKey());
+                    ECUtils.generatePrivateKeyParameter(mqvParameterSpec.getEphemeralPrivateKey());
 
                 ephemPubKey = null;
                 if (mqvParameterSpec.getEphemeralPublicKey() != null)
@@ -270,9 +244,9 @@ public class KeyAgreementSpi
             ECPublicKeyParameters ephemPubKey;
 
             staticPrivKey = (ECPrivateKeyParameters)
-                ECUtil.generatePrivateKeyParameter((PrivateKey)key);
+                ECUtils.generatePrivateKeyParameter((PrivateKey)key);
             ephemPrivKey = (ECPrivateKeyParameters)
-                ECUtil.generatePrivateKeyParameter(dheParameterSpec.getEphemeralPrivateKey());
+                ECUtils.generatePrivateKeyParameter(dheParameterSpec.getEphemeralPrivateKey());
 
             ephemPubKey = null;
             if (dheParameterSpec.getEphemeralPublicKey() != null)
@@ -299,7 +273,7 @@ public class KeyAgreementSpi
             {
                 throw new InvalidAlgorithmParameterException("no KDF specified for UserKeyingMaterialSpec");
             }
-            ECPrivateKeyParameters privKey = (ECPrivateKeyParameters)ECUtil.generatePrivateKeyParameter((PrivateKey)key);
+            ECPrivateKeyParameters privKey = (ECPrivateKeyParameters)ECUtils.generatePrivateKeyParameter((PrivateKey)key);
             this.parameters = privKey.getParameters();
             ukmParameters = (parameterSpec instanceof UserKeyingMaterialSpec) ? ((UserKeyingMaterialSpec)parameterSpec).getUserKeyingMaterial() : null;
             ((BasicAgreement)agreement).init(privKey);
@@ -313,7 +287,7 @@ public class KeyAgreementSpi
         return fullName.substring(fullName.lastIndexOf('.') + 1);
     }
     
-    protected byte[] calcSecret()
+    protected byte[] doCalcSecret()
     {
         return Arrays.clone(result);
     }
@@ -715,80 +689,80 @@ public class KeyAgreementSpi
     }
 
     /**
-   	 * KeyAgreement according to BSI TR-03111 chapter 4.3.1
-   	 */
-   	public static class ECKAEGwithSHA1KDF
-   			extends KeyAgreementSpi
-   	{
-   		public ECKAEGwithSHA1KDF()
-   		{
-   			super("ECKAEGwithSHA1KDF", new ECDHBasicAgreement(),
+        * KeyAgreement according to BSI TR-03111 chapter 4.3.1
+        */
+       public static class ECKAEGwithSHA1KDF
+               extends KeyAgreementSpi
+       {
+           public ECKAEGwithSHA1KDF()
+           {
+               super("ECKAEGwithSHA1KDF", new ECDHBasicAgreement(),
                    new KDF2BytesGenerator(DigestFactory.createSHA1()));
-   		}
-   	}
+           }
+       }
 
     /**
-   	 * KeyAgreement according to BSI TR-03111 chapter 4.3.1
-   	 */
-   	public static class ECKAEGwithRIPEMD160KDF
-   			extends KeyAgreementSpi
-   	{
-   		public ECKAEGwithRIPEMD160KDF()
-   		{
-   			super("ECKAEGwithRIPEMD160KDF", new ECDHBasicAgreement(),
+        * KeyAgreement according to BSI TR-03111 chapter 4.3.1
+        */
+       public static class ECKAEGwithRIPEMD160KDF
+               extends KeyAgreementSpi
+       {
+           public ECKAEGwithRIPEMD160KDF()
+           {
+               super("ECKAEGwithRIPEMD160KDF", new ECDHBasicAgreement(),
                    new KDF2BytesGenerator(new RIPEMD160Digest()));
-   		}
-   	}
+           }
+       }
 
     /**
-   	 * KeyAgreement according to BSI TR-03111 chapter 4.3.1
-   	 */
-   	public static class ECKAEGwithSHA224KDF
-   			extends KeyAgreementSpi
-   	{
-   		public ECKAEGwithSHA224KDF()
-   		{
-   			super("ECKAEGwithSHA224KDF", new ECDHBasicAgreement(),
+        * KeyAgreement according to BSI TR-03111 chapter 4.3.1
+        */
+       public static class ECKAEGwithSHA224KDF
+               extends KeyAgreementSpi
+       {
+           public ECKAEGwithSHA224KDF()
+           {
+               super("ECKAEGwithSHA224KDF", new ECDHBasicAgreement(),
                    new KDF2BytesGenerator(DigestFactory.createSHA224()));
-   		}
-   	}
+           }
+       }
 
-	/**
-	 * KeyAgreement according to BSI TR-03111 chapter 4.3.1
-	 */
-	public static class ECKAEGwithSHA256KDF
-			extends KeyAgreementSpi
-	{
-		public ECKAEGwithSHA256KDF()
-		{
-			super("ECKAEGwithSHA256KDF", new ECDHBasicAgreement(),
+    /**
+     * KeyAgreement according to BSI TR-03111 chapter 4.3.1
+     */
+    public static class ECKAEGwithSHA256KDF
+            extends KeyAgreementSpi
+    {
+        public ECKAEGwithSHA256KDF()
+        {
+            super("ECKAEGwithSHA256KDF", new ECDHBasicAgreement(),
                 new KDF2BytesGenerator(DigestFactory.createSHA256()));
-		}
-	}
+        }
+    }
 
-	/**
-	 * KeyAgreement according to BSI TR-03111 chapter 4.3.1
-	 */
-	public static class ECKAEGwithSHA384KDF
-			extends KeyAgreementSpi
-	{
-		public ECKAEGwithSHA384KDF()
-		{
-			super("ECKAEGwithSHA384KDF", new ECDHBasicAgreement(),
+    /**
+     * KeyAgreement according to BSI TR-03111 chapter 4.3.1
+     */
+    public static class ECKAEGwithSHA384KDF
+            extends KeyAgreementSpi
+    {
+        public ECKAEGwithSHA384KDF()
+        {
+            super("ECKAEGwithSHA384KDF", new ECDHBasicAgreement(),
                 new KDF2BytesGenerator(DigestFactory.createSHA384()));
-		}
-	}
+        }
+    }
 
-	/**
-	 * KeyAgreement according to BSI TR-03111 chapter 4.3.1
-	 */
-	public static class ECKAEGwithSHA512KDF
-			extends KeyAgreementSpi
-	{
-		public ECKAEGwithSHA512KDF()
-		{
-			super("ECKAEGwithSHA512KDF", new ECDHBasicAgreement(),
+    /**
+     * KeyAgreement according to BSI TR-03111 chapter 4.3.1
+     */
+    public static class ECKAEGwithSHA512KDF
+            extends KeyAgreementSpi
+    {
+        public ECKAEGwithSHA512KDF()
+        {
+            super("ECKAEGwithSHA512KDF", new ECDHBasicAgreement(),
                 new KDF2BytesGenerator(DigestFactory.createSHA512()));
-		}
-	}
+        }
+    }
 }

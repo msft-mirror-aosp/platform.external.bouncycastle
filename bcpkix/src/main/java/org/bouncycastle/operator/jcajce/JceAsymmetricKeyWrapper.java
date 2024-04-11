@@ -110,7 +110,7 @@ public class JceAsymmetricKeyWrapper
     public JceAsymmetricKeyWrapper(AlgorithmParameters algorithmParams, PublicKey publicKey)
         throws InvalidParameterSpecException
     {
-        super(extractFromSpec(algorithmParams.getParameterSpec(AlgorithmParameterSpec.class)));
+        super(extractAlgID(publicKey, algorithmParams.getParameterSpec(AlgorithmParameterSpec.class)));
 
         this.publicKey = publicKey;
     }
@@ -123,7 +123,7 @@ public class JceAsymmetricKeyWrapper
      */
     public JceAsymmetricKeyWrapper(AlgorithmParameterSpec algorithmParameterSpec, PublicKey publicKey)
     {
-        super(extractFromSpec(algorithmParameterSpec));
+        super(extractAlgID(publicKey, algorithmParameterSpec));
 
         this.publicKey = publicKey;
     }
@@ -236,10 +236,15 @@ public class JceAsymmetricKeyWrapper
         else
         {
             Cipher keyEncryptionCipher = helper.createAsymmetricWrapper(getAlgorithmIdentifier().getAlgorithm(), extraMappings);
+            AlgorithmParameters algParams = null;
 
             try
             {
-                AlgorithmParameters algParams = helper.createAlgorithmParameters(this.getAlgorithmIdentifier());
+                // in this case there are algorithm parameters, but they're not for key wrapping.
+                if (!this.getAlgorithmIdentifier().getAlgorithm().equals(OIWObjectIdentifiers.elGamalAlgorithm))
+                {
+                    algParams = helper.createAlgorithmParameters(this.getAlgorithmIdentifier());
+                }
 
                 if (algParams != null)
                 {
@@ -272,7 +277,14 @@ public class JceAsymmetricKeyWrapper
             {
                 try
                 {
-                    keyEncryptionCipher.init(Cipher.ENCRYPT_MODE, publicKey, random);
+                    if (algParams != null)
+                    {
+                        keyEncryptionCipher.init(Cipher.ENCRYPT_MODE, publicKey, algParams, random);
+                    }
+                    else
+                    {
+                        keyEncryptionCipher.init(Cipher.ENCRYPT_MODE, publicKey, random);
+                    }
                     encryptedKeyBytes = keyEncryptionCipher.doFinal(OperatorUtils.getJceKey(encryptionKey).getEncoded());
                 }
                 catch (InvalidKeyException e)
@@ -289,7 +301,7 @@ public class JceAsymmetricKeyWrapper
         return encryptedKeyBytes;
     }
 
-    private static AlgorithmIdentifier extractFromSpec(AlgorithmParameterSpec algorithmParameterSpec)
+    private static AlgorithmIdentifier extractAlgID(PublicKey pubKey, AlgorithmParameterSpec algorithmParameterSpec)
     {
         if (algorithmParameterSpec instanceof OAEPParameterSpec)
         {

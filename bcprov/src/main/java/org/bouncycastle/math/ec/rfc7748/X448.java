@@ -53,6 +53,11 @@ public abstract class X448
 
     public static void generatePrivateKey(SecureRandom random, byte[] k)
     {
+        if (k.length != SCALAR_SIZE)
+        {
+            throw new IllegalArgumentException("k");
+        }
+
         random.nextBytes(k);
 
         k[0] &= 0xFC;
@@ -156,6 +161,12 @@ public abstract class X448
 
     public static void scalarMultBase(byte[] k, int kOff, byte[] r, int rOff)
     {
+        // Equivalent (but much slower)
+//        byte[] u = new byte[POINT_SIZE];
+//        u[0] = 5;
+//
+//        scalarMult(k, kOff, u, 0, r, rOff);
+
         int[] x = F.create();
         int[] y = F.create();
 

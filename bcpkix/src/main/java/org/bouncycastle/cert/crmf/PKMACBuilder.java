@@ -12,10 +12,13 @@ import org.bouncycastle.asn1.oiw.OIWObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.operator.GenericKey;
 import org.bouncycastle.operator.MacCalculator;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.PBEMacCalculatorProvider;
 import org.bouncycastle.operator.RuntimeOperatorException;
 import org.bouncycastle.util.Strings;
 
 public class PKMACBuilder
+    implements PBEMacCalculatorProvider
 {
     private AlgorithmIdentifier owf;
     private int iterationCount;
@@ -28,7 +31,8 @@ public class PKMACBuilder
 
     public PKMACBuilder(PKMACValuesCalculator calculator)
     {
-        this(new AlgorithmIdentifier(OIWObjectIdentifiers.idSHA1), 1000, new AlgorithmIdentifier(IANAObjectIdentifiers.hmacSHA1, DERNull.INSTANCE), calculator);
+        this(new AlgorithmIdentifier(OIWObjectIdentifiers.idSHA1), 1000,
+            new AlgorithmIdentifier(IANAObjectIdentifiers.hmacSHA1, DERNull.INSTANCE), calculator);
     }
 
     /**
@@ -43,7 +47,8 @@ public class PKMACBuilder
         this.calculator = calculator;
     }
 
-    private PKMACBuilder(AlgorithmIdentifier hashAlgorithm, int iterationCount, AlgorithmIdentifier macAlgorithm, PKMACValuesCalculator calculator)
+    private PKMACBuilder(AlgorithmIdentifier hashAlgorithm, int iterationCount, AlgorithmIdentifier macAlgorithm,
+        PKMACValuesCalculator calculator)
     {
         this.owf = hashAlgorithm;
         this.iterationCount = iterationCount;
@@ -98,26 +103,36 @@ public class PKMACBuilder
         return this;
     }
 
+    public MacCalculator get(AlgorithmIdentifier algorithm, char[] password)
+        throws OperatorCreationException
+    {
+        if (!CMPObjectIdentifiers.passwordBasedMac.equals(algorithm.getAlgorithm()))
+        {
+            throw new OperatorCreationException("protection algorithm not mac based");
+        }
+
+        this.setParameters(PBMParameter.getInstance(algorithm.getParameters()));
+
+        try
+        {
+            return this.build(password);
+        }
+        catch (CRMFException e)
+        {
+            throw new OperatorCreationException(e.getMessage(), e.getCause());
+        }
+    }
+
     public MacCalculator build(char[] password)
         throws CRMFException
     {
-        if (parameters != null)
+        PBMParameter pbmParameter = parameters;        
+        if (pbmParameter == null)
         {
-            return genCalculator(parameters, password);
+            pbmParameter = genParameters();
         }
-        else
-        {
-            byte[] salt = new byte[saltLength];
 
-            if (random == null)
-            {
-                this.random = new SecureRandom();
-            }
-
-            random.nextBytes(salt);
-
-            return genCalculator(new PBMParameter(salt, owf, iterationCount, mac), password);
-        }
+        return genCalculator(pbmParameter, password);
     }
 
     private void checkIterationCountCeiling(int iterationCount)
@@ -195,5 +210,19 @@ public class PKMACBuilder
                 }
             }
         };
+    }
+
+    private PBMParameter genParameters()
+    {
+        byte[] salt = new byte[saltLength];
+
+        if (random == null)
+        {
+            random = new SecureRandom();
+        }
+
+        random.nextBytes(salt);
+
+        return new PBMParameter(salt, owf, iterationCount, mac);
     }
 }

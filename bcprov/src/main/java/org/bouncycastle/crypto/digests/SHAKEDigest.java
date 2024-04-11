@@ -1,10 +1,12 @@
 package org.bouncycastle.crypto.digests;
 
+import org.bouncycastle.crypto.CryptoServiceProperties;
+import org.bouncycastle.crypto.CryptoServicePurpose;
 import org.bouncycastle.crypto.Xof;
 
 
 /**
- * implementation of SHAKE based on following KeccakNISTInterface.c from http://keccak.noekeon.org/
+ * implementation of SHAKE based on following KeccakNISTInterface.c from https://keccak.noekeon.org/
  * <p>
  * Following the naming conventions used in the C source code to enable easy review of the implementation.
  */
@@ -12,15 +14,15 @@ public class SHAKEDigest
     extends KeccakDigest
     implements Xof
 {
-    private static int checkBitLength(int bitLength)
+    private static int checkBitLength(int bitStrength)
     {
-        switch (bitLength)
+        switch (bitStrength)
         {
         case 128:
         case 256:
-            return bitLength;
+            return bitStrength;
         default:
-            throw new IllegalArgumentException("'bitLength' " + bitLength + " not supported for SHAKE");
+            throw new IllegalArgumentException("'bitStrength' " + bitStrength + " not supported for SHAKE");
         }
     }
 
@@ -29,18 +31,50 @@ public class SHAKEDigest
         this(128);
     }
 
-    public SHAKEDigest(int bitLength)
+    public SHAKEDigest(CryptoServicePurpose purpose)
     {
-        super(checkBitLength(bitLength));
+        this(128, purpose);
     }
 
-    public SHAKEDigest(SHAKEDigest source) {
+    /**
+     * Base constructor.
+     *
+     * @param bitStrength the security strength in bits of the XOF.
+     */
+    public SHAKEDigest(int bitStrength)
+    {
+        super(checkBitLength(bitStrength), CryptoServicePurpose.ANY);
+    }
+
+    /**
+     * Base constructor.
+     *
+     * @param bitStrength the security strength in bits of the XOF.
+     * @param purpose the purpose of the digest will be used for.
+     */
+    public SHAKEDigest(int bitStrength, CryptoServicePurpose purpose)
+    {
+        super(checkBitLength(bitStrength), purpose);
+    }
+
+    /**
+     * Clone constructor
+     *
+     * @param source the other digest to be copied.
+     */
+    public SHAKEDigest(SHAKEDigest source)
+    {
         super(source);
     }
 
     public String getAlgorithmName()
     {
         return "SHAKE" + fixedOutputLength;
+    }
+
+    public int getDigestSize()
+    {
+        return fixedOutputLength / 4;
     }
 
     public int doFinal(byte[] out, int outOff)
@@ -107,5 +141,10 @@ public class SHAKEDigest
         reset();
 
         return outLen;
+    }
+
+    protected CryptoServiceProperties cryptoServiceProperties()
+    {
+        return Utils.getDefaultProperties(this, purpose);
     }
 }

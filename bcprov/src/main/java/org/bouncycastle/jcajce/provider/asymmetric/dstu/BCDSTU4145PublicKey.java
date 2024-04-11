@@ -10,13 +10,13 @@ import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
 import java.security.spec.EllipticCurve;
 
+import org.bouncycastle.asn1.ASN1BitString;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.ua.DSTU4145BinaryField;
 import org.bouncycastle.asn1.ua.DSTU4145ECBinary;
@@ -180,7 +180,7 @@ public class BCDSTU4145PublicKey
 
     private void populateFromPubKeyInfo(SubjectPublicKeyInfo info)
     {
-        DERBitString bits = info.getPublicKeyData();
+        ASN1BitString bits = info.getPublicKeyData();
         ASN1OctetString key;
         this.algorithm = "DSTU4145";
 
@@ -229,7 +229,7 @@ public class BCDSTU4145PublicKey
                     reverseBytes(b_bytes);
                 }
                 DSTU4145BinaryField field = binary.getField();
-                ECCurve curve = new ECCurve.F2m(field.getM(), field.getK1(), field.getK2(), field.getK3(), binary.getA(), new BigInteger(1, b_bytes));
+                ECCurve curve = new ECCurve.F2m(field.getM(), field.getK1(), field.getK2(), field.getK3(), binary.getA(), new BigInteger(1, b_bytes), null, null);
                 byte[] g_bytes = binary.getG();
                 if (info.getAlgorithm().getAlgorithm().equals(UAObjectIdentifiers.dstu4145le))
                 {

@@ -12,8 +12,8 @@ public abstract class X25519Field
 
     private static final int[] P32 = new int[]{ 0xFFFFFFED, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
         0xFFFFFFFF, 0x7FFFFFFF };
-    private static final int[] ROOT_NEG_ONE = new int[]{ 0x020EA0B0, 0x0386C9D2, 0x00478C4E, 0x0035697F, 0x005E8630,
-        0x01FBD7A7, 0x0340264F, 0x01F0B2B4, 0x00027E0E, 0x00570649 };
+    private static final int[] ROOT_NEG_ONE = new int[]{ -0x01F15F50, -0x0079362D, 0x00478C4F, 0x0035697F, 0x005E8630,
+        0x01FBD7A7, -0x00BFD9B1, -0x000F4D4B, 0x00027E0F, 0x00570649 };
 
     protected X25519Field() {}
 
@@ -43,6 +43,22 @@ public abstract class X25519Field
             zp[i] = xi + yi;
             zm[i] = xi - yi;
         }
+    }
+
+    public static int areEqual(int[] x, int[] y)
+    {
+        int d = 0;
+        for (int i = 0; i < SIZE; ++i)
+        {
+            d |= x[i] ^ y[i];
+        }
+        d = (d >>> 1) | (d & 1);
+        return (d - 1) >> 31;
+    }
+
+    public static boolean areEqualVar(int[] x, int[] y)
+    {
+        return 0 != areEqual(x, y);
     }
 
     public static void carry(int[] z)
@@ -136,11 +152,25 @@ public abstract class X25519Field
         z[9] &= M24;
     }
 
+    public static void decode(byte[] x, int[] z)
+    {
+        decode128(x, 0, z, 0);
+        decode128(x, 16, z, 5);
+        z[9] &= M24;
+    }
+
     public static void decode(byte[] x, int xOff, int[] z)
     {
         decode128(x, xOff, z, 0);
         decode128(x, xOff + 16, z, 5);
         z[9] &= M24;
+    }
+
+    public static void decode(byte[] x, int xOff, int[] z, int zOff)
+    {
+        decode128(x, xOff, z, zOff);
+        decode128(x, xOff + 16, z, zOff + 5);
+        z[zOff + 9] &= M24;
     }
 
     private static void decode128(int[] is, int off, int[] z, int zOff)
@@ -183,10 +213,22 @@ public abstract class X25519Field
         encode128(x, 5, z, zOff + 4);
     }
 
+    public static void encode(int[] x, byte[] z)
+    {
+        encode128(x, 0, z, 0);
+        encode128(x, 5, z, 16);
+    }
+
     public static void encode(int[] x, byte[] z, int zOff)
     {
         encode128(x, 0, z, zOff);
         encode128(x, 5, z, zOff + 16);
+    }
+
+    public static void encode(int[] x, int xOff, byte[] z, int zOff)
+    {
+        encode128(x, xOff, z, zOff);
+        encode128(x, xOff + 5, z, zOff + 16);
     }
 
     private static void encode128(int[] x, int xOff, int[] is, int off)
@@ -249,6 +291,22 @@ public abstract class X25519Field
         Mod.modOddInverseVar(P32, u, u);
 
         decode(u, 0, z);
+    }
+
+    public static int isOne(int[] x)
+    {
+        int d = x[0] ^ 1;
+        for (int i = 1; i < SIZE; ++i)
+        {
+            d |= x[i];
+        }
+        d = (d >>> 1) | (d & 1);
+        return (d - 1) >> 31;
+    }
+
+    public static boolean isOneVar(int[] x)
+    {
+        return 0 != isOne(x);
     }
 
     public static int isZero(int[] x)
@@ -461,7 +519,7 @@ public abstract class X25519Field
 
     public static void normalize(int[] z)
     {
-        int x = ((z[9] >>> 23) & 1);
+        int x = ((z[9] >>> (24 - 1)) & 1);
         reduce(z, x);
         reduce(z, -x);
 //        assert z[9] >>> 24 == 0;

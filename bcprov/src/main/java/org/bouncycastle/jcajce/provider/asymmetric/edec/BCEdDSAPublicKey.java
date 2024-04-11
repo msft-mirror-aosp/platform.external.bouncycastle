@@ -13,6 +13,7 @@ import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
 import org.bouncycastle.crypto.params.Ed448PublicKeyParameters;
 import org.bouncycastle.jcajce.interfaces.EdDSAPublicKey;
 import org.bouncycastle.util.Arrays;
+import org.bouncycastle.util.Properties;
 
 public class BCEdDSAPublicKey
     implements EdDSAPublicKey
@@ -57,20 +58,39 @@ public class BCEdDSAPublicKey
         }
     }
 
-    private void populateFromPubKeyInfo(SubjectPublicKeyInfo keyInfo)
+    public byte[] getPointEncoding()
     {
-        if (EdECObjectIdentifiers.id_Ed448.equals(keyInfo.getAlgorithm().getAlgorithm()))
+        if (eddsaPublicKey instanceof Ed448PublicKeyParameters)
         {
-            eddsaPublicKey = new Ed448PublicKeyParameters(keyInfo.getPublicKeyData().getOctets(), 0);
+            return ((Ed448PublicKeyParameters)eddsaPublicKey).getEncoded();
         }
         else
         {
-            eddsaPublicKey = new Ed25519PublicKeyParameters(keyInfo.getPublicKeyData().getOctets(), 0);
+            return ((Ed25519PublicKeyParameters)eddsaPublicKey).getEncoded();
+        }
+    }
+
+    private void populateFromPubKeyInfo(SubjectPublicKeyInfo keyInfo)
+    {
+        byte[] encoding = keyInfo.getPublicKeyData().getOctets();
+
+        if (EdECObjectIdentifiers.id_Ed448.equals(keyInfo.getAlgorithm().getAlgorithm()))
+        {
+            eddsaPublicKey = new Ed448PublicKeyParameters(encoding);
+        }
+        else
+        {
+            eddsaPublicKey = new Ed25519PublicKeyParameters(encoding);
         }
     }
 
     public String getAlgorithm()
     {
+        if (Properties.isOverrideSet(Properties.EMULATE_ORACLE))
+        {
+            return "EdDSA";
+        }
+
         return (eddsaPublicKey instanceof Ed448PublicKeyParameters) ? "Ed448" : "Ed25519";
     }
 

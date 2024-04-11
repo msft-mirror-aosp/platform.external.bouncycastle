@@ -1,5 +1,6 @@
 package org.bouncycastle.jcajce.provider.asymmetric.x509;
 
+import java.io.IOException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateExpiredException;
@@ -15,11 +16,11 @@ import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Primitive;
-import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.jcajce.provider.asymmetric.util.PKCS12BagAttributeCarrierImpl;
 import org.bouncycastle.jcajce.util.JcaJceHelper;
 import org.bouncycastle.jce.interfaces.PKCS12BagAttributeCarrier;
+import org.bouncycastle.util.Arrays;
 
 class X509CertificateObject
     extends X509CertificateImpl
@@ -159,6 +160,12 @@ class X509CertificateObject
         }
     }
 
+    public byte[] getEncoded()
+        throws CertificateEncodingException
+    {
+        return Arrays.clone(getInternalCertificate().getEncoded());
+    }
+
     public boolean equals(Object other)
     {
         if (other == this)
@@ -185,6 +192,8 @@ class X509CertificateObject
                     return false;
                 }
             }
+
+            return getInternalCertificate().equals(otherBC.getInternalCertificate());
         }
 
         return getInternalCertificate().equals(other);
@@ -249,18 +258,19 @@ class X509CertificateObject
             }
         }
 
-        byte[] encoding;
+        byte[] encoding = null;
+        CertificateEncodingException exception = null;
         try
         {
-            encoding = getEncoded();
+            encoding = c.getEncoded(ASN1Encoding.DER);
         }
-        catch (CertificateEncodingException e)
+        catch (IOException e)
         {
-            encoding = null;
+            exception = new X509CertificateEncodingException(e);
         }
 
         X509CertificateInternal temp = new X509CertificateInternal(bcHelper, c, basicConstraints, keyUsage, sigAlgName,
-            sigAlgParams, encoding);
+            sigAlgParams, encoding, exception);
 
         synchronized (cacheLock)
         {
@@ -302,7 +312,7 @@ class X509CertificateObject
                 return null;
             }
 
-            ASN1BitString bits = DERBitString.getInstance(ASN1Primitive.fromByteArray(extOctets));
+            ASN1BitString bits = ASN1BitString.getInstance(ASN1Primitive.fromByteArray(extOctets));
 
             byte[] bytes = bits.getBytes();
             int length = (bytes.length * 8) - bits.getPadBits();
@@ -349,6 +359,22 @@ class X509CertificateObject
         catch (Exception e)
         {
             throw new CertificateParsingException("cannot construct SigAlgParams: " + e);
+        }
+    }
+
+    private static class X509CertificateEncodingException
+        extends CertificateEncodingException
+    {
+        private final Throwable cause;
+
+        X509CertificateEncodingException(Throwable cause)
+        {
+            this.cause = cause;
+        }
+
+        public Throwable getCause()
+        {
+            return cause;
         }
     }
 }

@@ -10,13 +10,13 @@ import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.EllipticCurve;
 import java.util.Enumeration;
 
+import org.bouncycastle.asn1.ASN1BitString;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.ua.DSTU4145BinaryField;
@@ -53,7 +53,7 @@ public class BCDSTU4145PrivateKey
 
     private transient BigInteger d;
     private transient ECParameterSpec ecSpec;
-    private transient DERBitString publicKey;
+    private transient ASN1BitString publicKey;
     private transient PKCS12BagAttributeCarrierImpl attrCarrier = new PKCS12BagAttributeCarrierImpl();
 
     protected BCDSTU4145PrivateKey()
@@ -259,7 +259,7 @@ public class BCDSTU4145PrivateKey
                         reverseBytes(b_bytes);
                     }
                     DSTU4145BinaryField field = binary.getField();
-                    ECCurve curve = new ECCurve.F2m(field.getM(), field.getK1(), field.getK2(), field.getK3(), binary.getA(), new BigInteger(1, b_bytes));
+                    ECCurve curve = new ECCurve.F2m(field.getM(), field.getK1(), field.getK2(), field.getK3(), binary.getA(), new BigInteger(1, b_bytes), null, null);
                     byte[] g_bytes = binary.getG();
                     if (info.getPrivateKeyAlgorithm().getAlgorithm().equals(UAObjectIdentifiers.dstu4145le))
                     {
@@ -474,7 +474,7 @@ public class BCDSTU4145PrivateKey
         return ECUtil.privateKeyToString(algorithm, d, engineGetSpec());
     }
 
-    private DERBitString getPublicKeyDetails(BCDSTU4145PublicKey pub)
+    private ASN1BitString getPublicKeyDetails(BCDSTU4145PublicKey pub)
     {
         try
         {

@@ -7,10 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Set;
+import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
 import org.bouncycastle.asn1.cms.KEKRecipientInfo;
+import org.bouncycastle.asn1.cms.KEMRecipientInfo;
 import org.bouncycastle.asn1.cms.KeyAgreeRecipientInfo;
 import org.bouncycastle.asn1.cms.KeyTransRecipientInfo;
+import org.bouncycastle.asn1.cms.OtherRecipientInfo;
 import org.bouncycastle.asn1.cms.PasswordRecipientInfo;
 import org.bouncycastle.asn1.cms.RecipientInfo;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -46,6 +50,15 @@ class CMSEnvelopedHelper
             infos.add(new KeyTransRecipientInformation(
                 (KeyTransRecipientInfo)recipInfo, messageAlgorithm, secureReadable, additionalData));
         }
+        else if (recipInfo instanceof OtherRecipientInfo)
+        {
+            OtherRecipientInfo otherRecipientInfo = OtherRecipientInfo.getInstance(recipInfo);
+            if (CMSObjectIdentifiers.id_ori_kem.equals(otherRecipientInfo.getType()))
+            {
+                infos.add(new KEMRecipientInformation(
+                    KEMRecipientInfo.getInstance(otherRecipientInfo.getValue()), messageAlgorithm, secureReadable, additionalData));
+            }
+        }
         else if (recipInfo instanceof KEKRecipientInfo)
         {
             infos.add(new KEKRecipientInformation(
@@ -67,12 +80,19 @@ class CMSEnvelopedHelper
         implements CMSSecureReadable
     {
         private DigestCalculator digestCalculator;
+        private final ASN1ObjectIdentifier contentType;
         private CMSReadable readable;
 
-        public CMSDigestAuthenticatedSecureReadable(DigestCalculator digestCalculator, CMSReadable readable)
+        public CMSDigestAuthenticatedSecureReadable(DigestCalculator digestCalculator, ASN1ObjectIdentifier contentType, CMSReadable readable)
         {
             this.digestCalculator = digestCalculator;
+            this.contentType = contentType;
             this.readable = readable;
+        }
+
+        public ASN1ObjectIdentifier getContentType()
+        {
+            return contentType;
         }
 
         public InputStream getInputStream()
@@ -117,12 +137,19 @@ class CMSEnvelopedHelper
     static class CMSAuthenticatedSecureReadable implements CMSSecureReadable
     {
         private AlgorithmIdentifier algorithm;
+        private final ASN1ObjectIdentifier contentType;
         private CMSReadable readable;
 
-        CMSAuthenticatedSecureReadable(AlgorithmIdentifier algorithm, CMSReadable readable)
+        CMSAuthenticatedSecureReadable(AlgorithmIdentifier algorithm, ASN1ObjectIdentifier contentType, CMSReadable readable)
         {
             this.algorithm = algorithm;
+            this.contentType = contentType;
             this.readable = readable;
+        }
+
+        public ASN1ObjectIdentifier getContentType()
+        {
+            return contentType;
         }
 
         public InputStream getInputStream()
@@ -136,12 +163,19 @@ class CMSEnvelopedHelper
     static class CMSEnvelopedSecureReadable implements CMSSecureReadable
     {
         private AlgorithmIdentifier algorithm;
+        private final ASN1ObjectIdentifier contentType;
         private CMSReadable readable;
 
-        CMSEnvelopedSecureReadable(AlgorithmIdentifier algorithm, CMSReadable readable)
+        CMSEnvelopedSecureReadable(AlgorithmIdentifier algorithm, ASN1ObjectIdentifier contentType, CMSReadable readable)
         {
             this.algorithm = algorithm;
+            this.contentType = contentType;
             this.readable = readable;
+        }
+
+        public ASN1ObjectIdentifier getContentType()
+        {
+            return contentType;
         }
 
         public InputStream getInputStream()

@@ -3,7 +3,9 @@ package org.bouncycastle.cms.bc;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
@@ -38,6 +40,7 @@ class EnvelopedDataHelper
     protected static final Map BASE_CIPHER_NAMES = new HashMap();
     protected static final Map MAC_ALG_NAMES = new HashMap();
 
+    private static final Set authEnvelopedAlgorithms = new HashSet();
     private static final Map prfs = createTable();
 
     private static Map createTable()
@@ -62,7 +65,7 @@ class EnvelopedDataHelper
         {
             public ExtendedDigest get(AlgorithmIdentifier digestAlgorithmIdentifier)
             {
-                return new SHA256Digest();
+                return SHA256Digest.newInstance();
             }
         });
         table.put(PKCSObjectIdentifiers.id_hmacWithSHA384, new BcDigestProvider()
@@ -95,6 +98,13 @@ class EnvelopedDataHelper
         MAC_ALG_NAMES.put(CMSAlgorithm.AES192_CBC, "AESMac");
         MAC_ALG_NAMES.put(CMSAlgorithm.AES256_CBC, "AESMac");
         MAC_ALG_NAMES.put(CMSAlgorithm.RC2_CBC, "RC2Mac");
+
+        authEnvelopedAlgorithms.add(NISTObjectIdentifiers.id_aes128_GCM);
+        authEnvelopedAlgorithms.add(NISTObjectIdentifiers.id_aes192_GCM);
+        authEnvelopedAlgorithms.add(NISTObjectIdentifiers.id_aes256_GCM);
+        authEnvelopedAlgorithms.add(NISTObjectIdentifiers.id_aes128_CCM);
+        authEnvelopedAlgorithms.add(NISTObjectIdentifiers.id_aes192_CCM);
+        authEnvelopedAlgorithms.add(NISTObjectIdentifiers.id_aes256_CCM);
     }
 
     EnvelopedDataHelper()
@@ -114,7 +124,7 @@ class EnvelopedDataHelper
             || NISTObjectIdentifiers.id_aes192_CBC.equals(algorithm)
             || NISTObjectIdentifiers.id_aes256_CBC.equals(algorithm))
         {
-            return new RFC3211WrapEngine(new AESEngine());
+            return new RFC3211WrapEngine(AESEngine.newInstance());
         }
         else if (PKCSObjectIdentifiers.des_EDE3_CBC.equals(algorithm))
         {
@@ -174,9 +184,8 @@ class EnvelopedDataHelper
         }
     }
 
-    boolean isAuthEnveloped(ASN1ObjectIdentifier algorithm) {
-        return NISTObjectIdentifiers.id_aes128_GCM.equals(algorithm)
-                || NISTObjectIdentifiers.id_aes192_GCM.equals(algorithm)
-                || NISTObjectIdentifiers.id_aes256_GCM.equals(algorithm);
+    boolean isAuthEnveloped(ASN1ObjectIdentifier algorithm)
+    {
+        return authEnvelopedAlgorithms.contains(algorithm);
     }
 }

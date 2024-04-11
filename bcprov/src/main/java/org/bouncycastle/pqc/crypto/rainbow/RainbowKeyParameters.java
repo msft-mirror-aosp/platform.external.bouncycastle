@@ -2,17 +2,22 @@ package org.bouncycastle.pqc.crypto.rainbow;
 
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 
-public class RainbowKeyParameters 
+public class RainbowKeyParameters
     extends AsymmetricKeyParameter
 {
-    private int docLength;
+    private final RainbowParameters params;
+    private final int docLength;
 
-    public RainbowKeyParameters(
-            boolean         isPrivate,
-            int             docLength)
+    public RainbowKeyParameters(boolean isPrivateKey, RainbowParameters params)
     {
-        super(isPrivate);
-        this.docLength = docLength;
+        super(isPrivateKey);
+        this.params = params;
+        this.docLength = params.getM();
+    }
+
+    public RainbowParameters getParameters()
+    {
+        return params;
     }
 
     /**

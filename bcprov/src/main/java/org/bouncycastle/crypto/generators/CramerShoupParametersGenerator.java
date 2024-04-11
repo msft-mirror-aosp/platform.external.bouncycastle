@@ -47,7 +47,7 @@ public class CramerShoupParametersGenerator
         //
         BigInteger[] safePrimes = ParametersHelper.generateSafePrimes(size, certainty, random);
 
-//		BigInteger p = safePrimes[0];
+//        BigInteger p = safePrimes[0];
         BigInteger q = safePrimes[1];
         BigInteger g1 = ParametersHelper.selectGenerator(q, random);
         BigInteger g2 = ParametersHelper.selectGenerator(q, random);
@@ -56,7 +56,7 @@ public class CramerShoupParametersGenerator
             g2 = ParametersHelper.selectGenerator(q, random);
         }
 
-        return new CramerShoupParameters(q, g1, g2, new SHA256Digest());
+        return new CramerShoupParameters(q, g1, g2, SHA256Digest.newInstance());
     }
 
     public CramerShoupParameters generateParameters(DHParameters dhParams)
@@ -71,7 +71,7 @@ public class CramerShoupParametersGenerator
             g2 = ParametersHelper.selectGenerator(p, random);
         }
 
-        return new CramerShoupParameters(p, g1, g2, new SHA256Digest());
+        return new CramerShoupParameters(p, g1, g2, SHA256Digest.newInstance());
     }
 
     private static class ParametersHelper
@@ -107,9 +107,9 @@ public class CramerShoupParametersGenerator
             BigInteger pMinusTwo = p.subtract(TWO);
             BigInteger g;
 
-			/*
+            /*
              * RFC 2631 2.2.1.2 (and see: Handbook of Applied Cryptography 4.81)
-			 */
+             */
             do
             {
                 BigInteger h = BigIntegers.createRandomInRange(TWO, pMinusTwo, random);

@@ -2,6 +2,7 @@ package org.bouncycastle.operator.jcajce;
 
 import java.security.AlgorithmParameters;
 import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.PrivateKey;
@@ -16,6 +17,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.oiw.OIWObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.jcajce.util.DefaultJcaJceHelper;
 import org.bouncycastle.jcajce.util.NamedJcaJceHelper;
@@ -100,7 +102,7 @@ public class JceAsymmetricKeyUnwrapper
 
             try
             {
-                if (algParams != null)
+                if (algParams != null && !this.getAlgorithmIdentifier().getAlgorithm().equals(OIWObjectIdentifiers.elGamalAlgorithm))
                 {
                     keyCipher.init(Cipher.UNWRAP_MODE, privKey, algParams);
                 }
@@ -145,7 +147,15 @@ public class JceAsymmetricKeyUnwrapper
             // some providers do not support UNWRAP (this appears to be only for asymmetric algorithms)
             if (sKey == null)
             {
-                keyCipher.init(Cipher.DECRYPT_MODE, privKey);
+                // in this case there are algorithm parameters, but they're not for key wrapping.
+                if (algParams != null)
+                {
+                    keyCipher.init(Cipher.DECRYPT_MODE, privKey, algParams);
+                }
+                else
+                {
+                    keyCipher.init(Cipher.DECRYPT_MODE, privKey);
+                }
                 sKey = new SecretKeySpec(keyCipher.doFinal(encryptedKey), encryptedKeyAlgorithm.getAlgorithm().getId());
             }
 
@@ -162,6 +172,10 @@ public class JceAsymmetricKeyUnwrapper
         catch (BadPaddingException e)
         {
             throw new OperatorException("bad padding: " + e.getMessage(), e);
+        }
+        catch (InvalidAlgorithmParameterException e)
+        {
+            throw new OperatorException("invalid algorithm parameters: " + e.getMessage(), e);
         }
     }
 }

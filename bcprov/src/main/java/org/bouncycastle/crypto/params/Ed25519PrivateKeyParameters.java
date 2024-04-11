@@ -26,6 +26,11 @@ public final class Ed25519PrivateKeyParameters
         Ed25519.generatePrivateKey(random, data);
     }
 
+    public Ed25519PrivateKeyParameters(byte[] buf)
+    {
+        this(validate(buf), 0);
+    }
+
     public Ed25519PrivateKeyParameters(byte[] buf, int off)
     {
         super(true);
@@ -59,9 +64,7 @@ public final class Ed25519PrivateKeyParameters
         {
             if (null == cachedPublicKey)
             {
-                byte[] publicKey = new byte[Ed25519.PUBLIC_KEY_SIZE];
-                Ed25519.generatePublicKey(data, 0, publicKey, 0);
-                cachedPublicKey = new Ed25519PublicKeyParameters(publicKey, 0);
+                cachedPublicKey = new Ed25519PublicKeyParameters(Ed25519.generatePublicKey(data, 0));
             }
 
             return cachedPublicKey;
@@ -97,11 +100,28 @@ public final class Ed25519PrivateKeyParameters
         }
         case Ed25519.Algorithm.Ed25519ctx:
         {
+            if (null == ctx)
+            {
+                throw new NullPointerException("'ctx' cannot be null");
+            }
+            if (ctx.length > 255)
+            {
+                throw new IllegalArgumentException("ctx");
+            }
+
             Ed25519.sign(data, 0, pk, 0, ctx, msg, msgOff, msgLen, sig, sigOff);
             break;
         }
         case Ed25519.Algorithm.Ed25519ph:
         {
+            if (null == ctx)
+            {
+                throw new NullPointerException("'ctx' cannot be null");
+            }
+            if (ctx.length > 255)
+            {
+                throw new IllegalArgumentException("ctx");
+            }
             if (Ed25519.PREHASH_SIZE != msgLen)
             {
                 throw new IllegalArgumentException("msgLen");
@@ -115,5 +135,14 @@ public final class Ed25519PrivateKeyParameters
             throw new IllegalArgumentException("algorithm");
         }
         }
+    }
+
+    private static byte[] validate(byte[] buf)
+    {
+        if (buf.length != KEY_SIZE)
+        {
+            throw new IllegalArgumentException("'buf' must have length " + KEY_SIZE);
+        }
+        return buf;
     }
 }

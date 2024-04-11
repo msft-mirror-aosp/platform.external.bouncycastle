@@ -3,6 +3,7 @@ package org.bouncycastle.crypto.signers;
 import java.io.ByteArrayOutputStream;
 
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.Signer;
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
@@ -37,6 +38,8 @@ public class Ed25519Signer
             this.publicKey = (Ed25519PublicKeyParameters)parameters;
         }
 
+        CryptoServicesRegistrar.checkConstraints(Utils.getDefaultProperties("Ed25519", 128, parameters, forSigning));
+        
         reset();
     }
 
@@ -75,7 +78,7 @@ public class Ed25519Signer
         buffer.reset();
     }
 
-    private static class Buffer extends ByteArrayOutputStream
+    private static final class Buffer extends ByteArrayOutputStream
     {
         synchronized byte[] generateSignature(Ed25519PrivateKeyParameters privateKey)
         {
@@ -93,8 +96,7 @@ public class Ed25519Signer
                 return false;
             }
 
-            byte[] pk = publicKey.getEncoded();
-            boolean result = Ed25519.verify(signature, 0, pk, 0, buf, 0, count);
+            boolean result = publicKey.verify(Ed25519.Algorithm.Ed25519, null, buf, 0, count, signature, 0);
             reset();
             return result;
         }
