@@ -1,104 +1,121 @@
 package org.bouncycastle.pqc.crypto.rainbow;
 
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA384Digest;
+import org.bouncycastle.crypto.digests.SHA512Digest;
 
 public class RainbowParameters
     implements CipherParameters
 {
+    public static final RainbowParameters rainbowIIIclassic = new RainbowParameters("rainbow-III-classic", 3, Version.CLASSIC);
+    public static final RainbowParameters rainbowIIIcircumzenithal = new RainbowParameters("rainbow-III-circumzenithal", 3, Version.CIRCUMZENITHAL);
+    public static final RainbowParameters rainbowIIIcompressed = new RainbowParameters("rainbow-III-compressed", 3, Version.COMPRESSED);
 
-    /**
-     * DEFAULT PARAMS
-     */
-    /*
-      * Vi = vinegars per layer whereas n is vu (vu = 33 = n) such that
-      *
-      * v1 = 6; o1 = 12-6 = 6
-      *
-      * v2 = 12; o2 = 17-12 = 5
-      *
-      * v3 = 17; o3 = 22-17 = 5
-      *
-      * v4 = 22; o4 = 33-22 = 11
-      *
-      * v5 = 33; (o5 = 0)
-      */
-    private final int[] DEFAULT_VI = {6, 12, 17, 22, 33};
+    public static final RainbowParameters rainbowVclassic = new RainbowParameters("rainbow-V-classic", 5, Version.CLASSIC);
+    public static final RainbowParameters rainbowVcircumzenithal = new RainbowParameters("rainbow-V-circumzenithal", 5, Version.CIRCUMZENITHAL);
+    public static final RainbowParameters rainbowVcompressed = new RainbowParameters("rainbow-V-compressed", 5, Version.COMPRESSED);
 
-    private int[] vi;// set of vinegar vars per layer.
+    private final int v1;
+    private final int v2;
+    private final int o1;
+    private final int o2;
+    private final int n;
+    private final int m;
+    private static final int len_pkseed = 32;
+    private static final int len_skseed = 32;
+    private static final int len_salt = 16;
+    private final Digest hash_algo;
+    private final Version version;
+    private final String name;
 
-    /**
-     * Default Constructor The elements of the array containing the number of
-     * Vinegar variables in each layer are set to the default values here.
-     */
-    public RainbowParameters()
+    private RainbowParameters(String name, int strength, Version version)
     {
-        this.vi = this.DEFAULT_VI;
-    }
+        this.name = name;
 
-    /**
-     * Constructor with parameters
-     *
-     * @param vi The elements of the array containing the number of Vinegar
-     *           variables per layer are set to the values of the input array.
-     */
-    public RainbowParameters(int[] vi)
-    {
-        this.vi = vi;
-
-        checkParams();
-    }
-
-    private void checkParams()
-    {
-        if (vi == null)
+        switch (strength)
         {
-            throw new IllegalArgumentException("no layers defined.");
-        }
-        if (vi.length > 1)
-        {
-            for (int i = 0; i < vi.length - 1; i++)
-            {
-                if (vi[i] >= vi[i + 1])
-                {
-                    throw new IllegalArgumentException(
-                        "v[i] has to be smaller than v[i+1]");
-                }
-            }
-        }
-        else
-        {
+        case 3:
+            this.v1 = 68;
+            this.o1 = 32;
+            this.o2 = 48;
+            this.hash_algo = new SHA384Digest();
+            break;
+        case 5:
+            this.v1 = 96;
+            this.o1 = 36;
+            this.o2 = 64;
+            this.hash_algo = new SHA512Digest();
+            break;
+        default:
             throw new IllegalArgumentException(
-                "Rainbow needs at least 1 layer, such that v1 < v2.");
+                "No valid version. Please choose one of the following: 3, 5");
         }
+
+        this.v2 = v1 + o1;
+        this.n = v1 + o1 + o2;
+        this.m = o1 + o2;
+        this.version = version;
     }
 
-    /**
-     * Getter for the number of layers
-     *
-     * @return the number of layers
-     */
-    public int getNumOfLayers()
+    public String getName()
     {
-        return this.vi.length - 1;
+        return name;
     }
 
-    /**
-     * Getter for the number of all the polynomials in Rainbow
-     *
-     * @return the number of the polynomials
-     */
-    public int getDocLength()
+    Version getVersion()
     {
-        return vi[vi.length - 1] - vi[0];
+        return this.version;
     }
 
-    /**
-     * Getter for the array containing the number of Vinegar-variables per layer
-     *
-     * @return the numbers of vinegars per layer
-     */
-    public int[] getVi()
+    int getV1()
     {
-        return this.vi;
+        return this.v1;
     }
+
+    int getO1()
+    {
+        return this.o1;
+    }
+
+    int getO2()
+    {
+        return this.o2;
+    }
+
+    Digest getHash_algo()
+    {
+        return this.hash_algo;
+    }
+
+    int getV2()
+    {
+        return v2;
+    }
+
+    int getN()
+    {
+        return n;
+    }
+
+    int getM()
+    {
+        return m;
+    }
+
+    int getLen_pkseed()
+    {
+        return len_pkseed;
+    }
+
+    int getLen_skseed()
+    {
+        return len_skseed;
+    }
+
+    int getLen_salt()
+    {
+        return len_salt;
+    }
+
 }

@@ -10,6 +10,8 @@ import java.security.SignatureException;
 import org.bouncycastle.crypto.CryptoException;
 import org.bouncycastle.crypto.Signer;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
+import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
 import org.bouncycastle.crypto.params.Ed448PrivateKeyParameters;
 import org.bouncycastle.crypto.params.Ed448PublicKeyParameters;
 import org.bouncycastle.crypto.signers.Ed25519Signer;
@@ -32,49 +34,55 @@ public class SignatureSpi
     protected void engineInitVerify(PublicKey publicKey)
         throws InvalidKeyException
     {
-        if (publicKey instanceof BCEdDSAPublicKey)
+        AsymmetricKeyParameter pub = getLwEdDSAKeyPublic(publicKey);
+
+        if (pub instanceof Ed25519PublicKeyParameters)
         {
-            AsymmetricKeyParameter pub = ((BCEdDSAPublicKey)publicKey).engineGetKeyParameters();
-
-            if (pub instanceof Ed448PublicKeyParameters)
-            {
-                signer = getSigner("Ed448");
-            }
-            else
-            {
-                signer = getSigner("Ed25519");
-            }
-
-            signer.init(false, pub);
+            signer = getSigner("Ed25519");
+        }
+        else if (pub instanceof Ed448PublicKeyParameters)
+        {
+            signer = getSigner("Ed448");
         }
         else
         {
-            throw new InvalidKeyException("cannot identify EdDSA public key");
+            throw new InvalidKeyException("unsupported public key type");
         }
+
+        signer.init(false, pub);
     }
 
     protected void engineInitSign(PrivateKey privateKey)
         throws InvalidKeyException
     {
-        if (privateKey instanceof BCEdDSAPrivateKey)
+        AsymmetricKeyParameter priv = getLwEdDSAKeyPrivate(privateKey);
+
+        if (priv instanceof Ed25519PrivateKeyParameters)
         {
-            AsymmetricKeyParameter priv = ((BCEdDSAPrivateKey)privateKey).engineGetKeyParameters();
-
-            if (priv instanceof Ed448PrivateKeyParameters)
-            {
-                signer = getSigner("Ed448");
-            }
-            else
-            {
-                signer = getSigner("Ed25519");
-            }
-
-            signer.init(true, priv);
+            signer = getSigner("Ed25519");
+        }
+        else if (priv instanceof Ed448PrivateKeyParameters)
+        {
+            signer = getSigner("Ed448");
         }
         else
         {
-            throw new InvalidKeyException("cannot identify EdDSA private key");
+            throw new InvalidKeyException("unsupported private key type");
         }
+
+        signer.init(true, priv);
+    }
+
+    private static AsymmetricKeyParameter getLwEdDSAKeyPrivate(PrivateKey key)
+        throws InvalidKeyException
+    {
+        return EdECUtil.generatePrivateKeyParameter(key);
+    }
+
+    private static AsymmetricKeyParameter getLwEdDSAKeyPublic(PublicKey key)
+        throws InvalidKeyException
+    {
+        return EdECUtil.generatePublicKeyParameter(key);
     }
 
     private Signer getSigner(String alg)

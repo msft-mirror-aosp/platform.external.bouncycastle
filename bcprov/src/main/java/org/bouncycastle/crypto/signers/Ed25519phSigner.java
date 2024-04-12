@@ -1,6 +1,7 @@
 package org.bouncycastle.crypto.signers;
 
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.Signer;
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
@@ -20,6 +21,11 @@ public class Ed25519phSigner
 
     public Ed25519phSigner(byte[] context)
     {
+        if (null == context)
+        {
+            throw new NullPointerException("'context' cannot be null");
+        }
+
         this.context = Arrays.clone(context);
     }
 
@@ -37,6 +43,8 @@ public class Ed25519phSigner
             this.privateKey = null;
             this.publicKey = (Ed25519PublicKeyParameters)parameters;
         }
+
+        CryptoServicesRegistrar.checkConstraints(Utils.getDefaultProperties("Ed25519", 128, parameters, forSigning));
 
         reset();
     }
@@ -81,8 +89,13 @@ public class Ed25519phSigner
             return false;
         }
 
-        byte[] pk = publicKey.getEncoded();
-        return Ed25519.verifyPrehash(signature, 0, pk, 0, context, prehash);
+        byte[] msg = new byte[Ed25519.PREHASH_SIZE];
+        if (Ed25519.PREHASH_SIZE != prehash.doFinal(msg, 0))
+        {
+            throw new IllegalStateException("Prehash digest failed");
+        }
+
+        return publicKey.verify(Ed25519.Algorithm.Ed25519ph, context, msg, 0, Ed25519.PREHASH_SIZE, signature, 0);
     }
 
     public void reset()

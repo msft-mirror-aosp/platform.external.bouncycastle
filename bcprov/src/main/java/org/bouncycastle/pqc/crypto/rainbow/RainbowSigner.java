@@ -4,42 +4,31 @@ import java.security.SecureRandom;
 
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.CryptoServicesRegistrar;
+import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
 import org.bouncycastle.pqc.crypto.MessageSigner;
-import org.bouncycastle.pqc.crypto.rainbow.util.ComputeInField;
-import org.bouncycastle.pqc.crypto.rainbow.util.GF2Field;
+import org.bouncycastle.util.Arrays;
 
-/**
- * It implements the sign and verify functions for the Rainbow Signature Scheme.
- * Here the message, which has to be signed, is updated. The use of
- * different hash functions is possible.
- * <p>
- * Detailed information about the signature and the verify-method is to be found
- * in the paper of Jintai Ding, Dieter Schmidt: Rainbow, a New Multivariable
- * Polynomial Signature Scheme. ACNS 2005: 164-175
- * (https://dx.doi.org/10.1007/11496137_12)
- */
 public class RainbowSigner
     implements MessageSigner
 {
     private static final int MAXITS = 65536;
-    
+
     // Source of randomness
     private SecureRandom random;
 
     // The length of a document that can be signed with the privKey
     int signableDocumentLength;
 
-    // Container for the oil and vinegar variables of all the layers
-    private short[] x;
-
     private ComputeInField cf = new ComputeInField();
 
-    RainbowKeyParameters key;
+    private RainbowKeyParameters key;
+    private Digest hashAlgo;
+    private Version version;
 
-    public void init(boolean forSigning,
-                     CipherParameters param)
+    public void init(boolean forSigning, CipherParameters param)
     {
+        RainbowKeyParameters tmpParam;
         if (forSigning)
         {
             if (param instanceof ParametersWithRandom)
@@ -47,236 +36,245 @@ public class RainbowSigner
                 ParametersWithRandom rParam = (ParametersWithRandom)param;
 
                 this.random = rParam.getRandom();
-                this.key = (RainbowPrivateKeyParameters)rParam.getParameters();
-
+                tmpParam = (RainbowKeyParameters)rParam.getParameters();
             }
             else
             {
-
-                this.random = CryptoServicesRegistrar.getSecureRandom();
-                this.key = (RainbowPrivateKeyParameters)param;
+                tmpParam = (RainbowKeyParameters)param;
+                SecureRandom sr = CryptoServicesRegistrar.getSecureRandom();
+                byte[] seed = new byte[tmpParam.getParameters().getLen_skseed()];
+                sr.nextBytes(seed);
+                this.random = new RainbowDRBG(seed, tmpParam.getParameters().getHash_algo());
             }
+            this.version = tmpParam.getParameters().getVersion();
+            this.key = tmpParam;
         }
         else
         {
-            this.key = (RainbowPublicKeyParameters)param;
+            this.key = (RainbowKeyParameters)param;
+            this.version = key.getParameters().getVersion();
         }
 
         this.signableDocumentLength = this.key.getDocLength();
+        this.hashAlgo = this.key.getParameters().getHash_algo();
     }
 
-
-    /**
-     * initial operations before solving the Linear equation system.
-     *
-     * @param layer the current layer for which a LES is to be solved.
-     * @param msg   the message that should be signed.
-     * @return Y_ the modified document needed for solving LES, (Y_ =
-     * A1^{-1}*(Y-b1)) linear map L1 = A1 x + b1.
-     */
-    private short[] initSign(Layer[] layer, short[] msg)
+    private byte[] genSignature(byte[] message)
     {
+        byte[] msgHash = new byte[hashAlgo.getDigestSize()];
 
-        /* preparation: Modifies the document with the inverse of L1 */
-        // tmp = Y - b1:
-        short[] tmpVec = new short[msg.length];
+        hashAlgo.update(message, 0, message.length);
+        hashAlgo.doFinal(msgHash, 0);
 
-        tmpVec = cf.addVect(((RainbowPrivateKeyParameters)this.key).getB1(), msg);
+        int v1 = this.key.getParameters().getV1();
+        int o1 = this.key.getParameters().getO1();
+        int o2 = this.key.getParameters().getO2();
+        int m = this.key.getParameters().getM(); // o1 + o2
+        int n = this.key.getParameters().getN(); // o1 + o2 + v1
 
-        // Y_ = A1^{-1} * (Y - b1) :
-        short[] Y_ = cf.multiplyMatrix(((RainbowPrivateKeyParameters)this.key).getInvA1(), tmpVec);
+        RainbowPrivateKeyParameters sk = (RainbowPrivateKeyParameters)this.key;
+        
+        byte[] seed = RainbowUtil.hash(hashAlgo, sk.sk_seed, msgHash, new byte[hashAlgo.getDigestSize()]);
+        this.random = new RainbowDRBG(seed, sk.getParameters().getHash_algo());
 
-        /* generates the vinegar vars of the first layer at random */
-        for (int i = 0; i < layer[0].getVi(); i++)
+        short[] vinegar = new short[v1];
+        short[][] L1 = null; // layer 1 linear equations
+
+        short[][] L2; // layer 2 linear equations
+        short[] r_l1_F1 = new short[o1];
+        short[] r_l2_F1 = new short[o2];
+        short[] r_l2_F5 = new short[o2];
+        short[][] L2_F2 = new short[o2][o1];
+        short[][] L2_F3 = new short[o2][o2];
+
+        byte[] salt = new byte[sk.getParameters().getLen_salt()];
+        byte[] hash;
+        short[] h;
+
+        // x = S^-1 * h
+        short[] x = new short[m];
+
+        // y = F^-1 * x
+        short[] y_o1 = new short[o1];
+        short[] y_o2 = null;
+
+        // z = T^-1 * y
+        short[] z;
+
+        byte[] tmpRandom;
+        short temp;
+        short[] tmp_vec;
+        int counter = 0;
+
+        while (L1 == null && counter < MAXITS)
         {
-            x[i] = (short)random.nextInt();
-            x[i] = (short)(x[i] & GF2Field.MASK);
-        }
-
-        return Y_;
-    }
-
-    /**
-     * This function signs the message that has been updated, making use of the
-     * private key.
-     * <p>
-     * For computing the signature, L1 and L2 are needed, as well as LES should
-     * be solved for each layer in order to find the Oil-variables in the layer.
-     * <p>
-     * The Vinegar-variables of the first layer are random generated.
-     *
-     * @param message the message
-     * @return the signature of the message.
-     */
-    public byte[] generateSignature(byte[] message)
-    {
-        Layer[] layer = ((RainbowPrivateKeyParameters)this.key).getLayers();
-        int numberOfLayers = layer.length;
-
-        x = new short[((RainbowPrivateKeyParameters)this.key).getInvA2().length]; // all variables
-
-        short[] Y_; // modified document
-        short[] y_i; // part of Y_ each polynomial
-        int counter; // index of the current part of the doc
-
-        short[] solVec; // the solution of LES pro layer
-        short[] tmpVec;
-
-        // the signature as an array of shorts:
-        short[] signature;
-        // the signature as a byte-array:
-        byte[] S = new byte[layer[numberOfLayers - 1].getViNext()];
-
-        short[] msgHashVals = makeMessageRepresentative(message);
-        int itCount = 0;
-
-        // shows if an exception is caught
-        boolean ok;
-        do
-        {
-            ok = true;
-            counter = 0;
-            try
+            tmpRandom = new byte[v1];
+            this.random.nextBytes(tmpRandom);
+            for (int i = 0; i < v1; i++)
             {
-                Y_ = initSign(layer, msgHashVals);
-
-                for (int i = 0; i < numberOfLayers; i++)
+                vinegar[i] = (short)(tmpRandom[i] & GF2Field.MASK);
+            }
+            L1 = new short[o1][o1];
+            for (int i = 0; i < v1; i++)
+            {
+                for (int k = 0; k < o1; k++)
                 {
-
-                    y_i = new short[layer[i].getOi()];
-                    solVec = new short[layer[i].getOi()]; // solution of LES
-
-                    /* copy oi elements of Y_ into y_i */
-                    for (int k = 0; k < layer[i].getOi(); k++)
+                    for (int j = 0; j < o1; j++)
                     {
-                        y_i[k] = Y_[counter];
-                        counter++; // current index of Y_
-                    }
-
-                    /*
-                     * plug in the vars of the previous layer in order to get
-                     * the vars of the current layer
-                     */
-                    solVec = cf.solveEquation(layer[i].plugInVinegars(x), y_i);
-
-                    if (solVec == null)
-                    { // LES is not solveable
-                        throw new Exception("LES is not solveable!");
-                    }
-
-                    /* copy the new vars into the x-array */
-                    for (int j = 0; j < solVec.length; j++)
-                    {
-                        x[layer[i].getVi() + j] = solVec[j];
+                        temp = GF2Field.multElem(sk.l1_F2[k][i][j], vinegar[i]);
+                        L1[k][j] = GF2Field.addElem(L1[k][j], temp);
                     }
                 }
+            }
+            L1 = cf.inverse(L1);
+            counter++;
+        }
 
-                /* apply the inverse of L2: (signature = A2^{-1}*(b2+x)) */
-                tmpVec = cf.addVect(((RainbowPrivateKeyParameters)this.key).getB2(), x);
-                signature = cf.multiplyMatrix(((RainbowPrivateKeyParameters)this.key).getInvA2(), tmpVec);
+        // Given the vinegars, pre-compute variables needed for layer 2
+        for (int k = 0; k < o1; k++)
+        {
+            r_l1_F1[k] = cf.multiplyMatrix_quad(sk.l1_F1[k], vinegar);
+        }
 
-                /* cast signature from short[] to byte[] */
-                for (int i = 0; i < S.length; i++)
+        for (int i = 0; i < v1; i++)
+        {
+            for (int k = 0; k < o2; k++)
+            {
+                r_l2_F1[k] = cf.multiplyMatrix_quad(sk.l2_F1[k], vinegar);
+                for (int j = 0; j < o1; j++)
                 {
-                    S[i] = ((byte)signature[i]);
+                    temp = GF2Field.multElem(sk.l2_F2[k][i][j], vinegar[i]);
+                    L2_F2[k][j] = GF2Field.addElem(L2_F2[k][j], temp);
+                }
+                for (int j = 0; j < o2; j++)
+                {
+                    temp = GF2Field.multElem(sk.l2_F3[k][i][j], vinegar[i]);
+                    L2_F3[k][j] = GF2Field.addElem(L2_F3[k][j], temp);
                 }
             }
-            catch (Exception se)
-            {
-                // if one of the LESs was not solveable - sign again
-                ok = false;
-            }
         }
-        while (!ok && ++itCount < MAXITS);
-        /* return the signature in bytes */
 
-        if (itCount == MAXITS)
+        byte[] mHash = new byte[m];
+        while (y_o2 == null && counter < MAXITS)
+        {
+            L2 = new short[o2][o2];
+
+            this.random.nextBytes(salt);
+
+            // h = (short)H(msg_digest||salt)
+            hash = RainbowUtil.hash(this.hashAlgo, msgHash, salt, mHash);
+            h = makeMessageRepresentative(hash);
+
+            // x = S^-1 * h
+            tmp_vec = cf.multiplyMatrix(sk.s1, Arrays.copyOfRange(h, o1, m));
+            tmp_vec = cf.addVect(Arrays.copyOf(h, o1), tmp_vec);
+            System.arraycopy(tmp_vec, 0, x, 0, o1);
+            System.arraycopy(h, o1, x, o1, o2);  // identity part of S
+
+            // y = F^-1 * x
+            // layer 1: calculate y_o1
+            tmp_vec = cf.addVect(r_l1_F1, Arrays.copyOf(x, o1));
+            y_o1 = cf.multiplyMatrix(L1, tmp_vec);
+
+            // layer 2: calculate y_o2
+            tmp_vec = cf.multiplyMatrix(L2_F2, y_o1);
+            for (int k = 0; k < o2; k++)
+            {
+                r_l2_F5[k] = cf.multiplyMatrix_quad(sk.l2_F5[k], y_o1);
+            }
+            tmp_vec = cf.addVect(tmp_vec, r_l2_F5);
+            tmp_vec = cf.addVect(tmp_vec, r_l2_F1);
+            tmp_vec = cf.addVect(tmp_vec, Arrays.copyOfRange(x, o1, m));
+
+            for (int i = 0; i < o1; i++)
+            {
+                for (int k = 0; k < o2; k++)
+                {
+                    for (int j = 0; j < o2; j++)
+                    {
+                        temp = GF2Field.multElem(sk.l2_F6[k][i][j], y_o1[i]);
+                        L2[k][j] = GF2Field.addElem(L2[k][j], temp);
+                    }
+                }
+            }
+            L2 = cf.addMatrix(L2, L2_F3);
+
+            // y_o2 = null if LES not solvable - try again
+            y_o2 = cf.solveEquation(L2, tmp_vec);
+
+            counter++;
+        }
+
+        // continue even though LES wasn't solvable for time consistency
+        y_o2 = (y_o2 == null) ? new short[o2] : y_o2;
+
+        // z = T^-1 * y
+        tmp_vec = cf.multiplyMatrix(sk.t1, y_o1);
+        z = cf.addVect(vinegar, tmp_vec);
+        tmp_vec = cf.multiplyMatrix(sk.t4, y_o2);
+        z = cf.addVect(z, tmp_vec);
+        tmp_vec = cf.multiplyMatrix(sk.t3, y_o2);
+        tmp_vec = cf.addVect(y_o1, tmp_vec);
+        z = Arrays.copyOf(z, n);
+        System.arraycopy(tmp_vec, 0, z, v1, o1);
+        System.arraycopy(y_o2, 0, z, o1 + v1, o2); // identity part of T
+
+        if (counter == MAXITS)
         {
             throw new IllegalStateException("unable to generate signature - LES not solvable");
         }
 
-        return S;
+        // cast signature from short[] to byte[]
+        byte[] signature = RainbowUtil.convertArray(z);
+
+        return Arrays.concatenate(signature, salt);
     }
 
-    /**
-     * This function verifies the signature of the message that has been
-     * updated, with the aid of the public key.
-     *
-     * @param message   the message
-     * @param signature the signature of the message
-     * @return true if the signature has been verified, false otherwise.
-     */
+    public byte[] generateSignature(byte[] message)
+    {
+        return genSignature(message);
+    }
+
     public boolean verifySignature(byte[] message, byte[] signature)
     {
-        short[] sigInt = new short[signature.length];
-        short tmp;
+        byte[] msgHash = new byte[hashAlgo.getDigestSize()];
 
-        for (int i = 0; i < signature.length; i++)
+        hashAlgo.update(message, 0, message.length);
+        hashAlgo.doFinal(msgHash, 0);
+
+        int m = this.key.getParameters().getM(); // o1 + o2
+        int n = this.key.getParameters().getN(); // o1 + o2 + v1
+
+        RainbowPublicMap p_map = new RainbowPublicMap(this.key.getParameters());
+
+        // h = (short)H(msg_digest||salt)
+        byte[] salt = Arrays.copyOfRange(signature, n, signature.length);
+        byte[] hash = RainbowUtil.hash(this.hashAlgo, msgHash, salt, new byte[m]);
+        short[] h = makeMessageRepresentative(hash);
+
+        // verificationResult = P(sig)
+        byte[] sig_msg = Arrays.copyOfRange(signature, 0, n);
+        short[] sig = RainbowUtil.convertArray(sig_msg);
+        short[] verificationResult;
+
+        switch (this.version)
         {
-            tmp = (short)signature[i];
-            tmp &= (short)0xff;
-            sigInt[i] = tmp;
+        case CLASSIC:
+            RainbowPublicKeyParameters pk = (RainbowPublicKeyParameters)this.key;
+            verificationResult = p_map.publicMap(pk, sig);
+            break;
+        case CIRCUMZENITHAL:
+        case COMPRESSED:
+            RainbowPublicKeyParameters cpk = (RainbowPublicKeyParameters)this.key;
+            verificationResult = p_map.publicMap_cyclic(cpk, sig);
+            break;
+        default:
+            throw new IllegalArgumentException(
+                "No valid version. Please choose one of the following: classic, circumzenithal, compressed");
         }
-
-        short[] msgHashVal = makeMessageRepresentative(message);
-
-        // verify
-        short[] verificationResult = verifySignatureIntern(sigInt);
 
         // compare
-        boolean verified = true;
-        if (msgHashVal.length != verificationResult.length)
-        {
-            return false;
-        }
-        for (int i = 0; i < msgHashVal.length; i++)
-        {
-            verified = verified && msgHashVal[i] == verificationResult[i];
-        }
-
-        return verified;
-    }
-
-    /**
-     * Signature verification using public key
-     *
-     * @param signature vector of dimension n
-     * @return document hash of length n - v1
-     */
-    private short[] verifySignatureIntern(short[] signature)
-    {
-
-        short[][] coeff_quadratic = ((RainbowPublicKeyParameters)this.key).getCoeffQuadratic();
-        short[][] coeff_singular = ((RainbowPublicKeyParameters)this.key).getCoeffSingular();
-        short[] coeff_scalar = ((RainbowPublicKeyParameters)this.key).getCoeffScalar();
-
-        short[] rslt = new short[coeff_quadratic.length];// n - v1
-        int n = coeff_singular[0].length;
-        int offset = 0; // array position
-        short tmp = 0; // for scalar
-
-        for (int p = 0; p < coeff_quadratic.length; p++)
-        { // no of polynomials
-            offset = 0;
-            for (int x = 0; x < n; x++)
-            {
-                // calculate quadratic terms
-                for (int y = x; y < n; y++)
-                {
-                    tmp = GF2Field.multElem(coeff_quadratic[p][offset],
-                        GF2Field.multElem(signature[x], signature[y]));
-                    rslt[p] = GF2Field.addElem(rslt[p], tmp);
-                    offset++;
-                }
-                // calculate singular terms
-                tmp = GF2Field.multElem(coeff_singular[p][x], signature[x]);
-                rslt[p] = GF2Field.addElem(rslt[p], tmp);
-            }
-            // add scalar
-            rslt[p] = GF2Field.addElem(rslt[p], coeff_scalar[p]);
-        }
-
-        return rslt;
+        return RainbowUtil.equals(h, verificationResult);
     }
 
     /**
@@ -299,8 +297,7 @@ public class RainbowSigner
             {
                 break;
             }
-            output[i] = (short)message[h];
-            output[i] &= (short)0xff;
+            output[i] = (short)(message[h] & 0xff);
             h++;
             i++;
         }

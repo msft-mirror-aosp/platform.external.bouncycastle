@@ -3,6 +3,8 @@ package org.bouncycastle.jcajce.provider.asymmetric.edec;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
 
@@ -14,6 +16,7 @@ import org.bouncycastle.crypto.agreement.XDHUnifiedAgreement;
 import org.bouncycastle.crypto.agreement.kdf.ConcatenationKDFGenerator;
 import org.bouncycastle.crypto.generators.KDF2BytesGenerator;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
+import org.bouncycastle.crypto.params.X25519PrivateKeyParameters;
 import org.bouncycastle.crypto.params.X448PrivateKeyParameters;
 import org.bouncycastle.crypto.params.XDHUPrivateParameters;
 import org.bouncycastle.crypto.params.XDHUPublicParameters;
@@ -21,6 +24,7 @@ import org.bouncycastle.crypto.util.DigestFactory;
 import org.bouncycastle.jcajce.provider.asymmetric.util.BaseAgreementSpi;
 import org.bouncycastle.jcajce.spec.DHUParameterSpec;
 import org.bouncycastle.jcajce.spec.UserKeyingMaterialSpec;
+import org.bouncycastle.util.Properties;
 
 public class KeyAgreementSpi
     extends BaseAgreementSpi
@@ -31,73 +35,40 @@ public class KeyAgreementSpi
 
     KeyAgreementSpi(String algorithm)
     {
-        super(algorithm, null);
+        super(Properties.isOverrideSet(Properties.EMULATE_ORACLE) ? "XDH" : algorithm, null);
     }
 
     KeyAgreementSpi(String algorithm, DerivationFunction kdf)
     {
-        super(algorithm, kdf);
+        super(Properties.isOverrideSet(Properties.EMULATE_ORACLE) ? "XDH" : algorithm, kdf);
     }
 
-    protected byte[] calcSecret()
+    protected byte[] doCalcSecret()
     {
         return result;
     }
 
-    protected void engineInit(Key key, SecureRandom secureRandom)
-        throws InvalidKeyException
-    {
-        if (key instanceof BCXDHPrivateKey)
-        {
-            AsymmetricKeyParameter priv = ((BCXDHPrivateKey)key).engineGetKeyParameters();
-
-            if (priv instanceof X448PrivateKeyParameters)
-            {
-                agreement = getAgreement("X448");
-            }
-            else
-            {
-                agreement = getAgreement("X25519");
-            }
-
-            agreement.init(priv);
-        }
-        else
-        {
-            throw new InvalidKeyException("cannot identify XDH private key");
-        }
-
-        if (kdf != null)
-        {
-            ukmParameters = new byte[0];
-        }
-        else
-        {
-            ukmParameters = null;
-        }
-    }
-
-    protected void engineInit(Key key, AlgorithmParameterSpec params, SecureRandom secureRandom)
+    protected void doInitFromKey(Key key, AlgorithmParameterSpec params, SecureRandom secureRandom)
         throws InvalidKeyException, InvalidAlgorithmParameterException
     {
-        AsymmetricKeyParameter priv;
-
-        if (key instanceof BCXDHPrivateKey)
+        if (!(key instanceof PrivateKey))
         {
-            priv = ((BCXDHPrivateKey)key).engineGetKeyParameters();
+            throw new InvalidKeyException("private XDH key required");
+        }
 
-            if (priv instanceof X448PrivateKeyParameters)
-            {
-                agreement = getAgreement("X448");
-            }
-            else
-            {
-                agreement = getAgreement("X25519");
-            }
+        AsymmetricKeyParameter priv = EdECUtil.generatePrivateKeyParameter((PrivateKey)key);
+
+        if (priv instanceof X25519PrivateKeyParameters)
+        {
+            agreement = getAgreement("X25519");
+        }
+        else if (priv instanceof X448PrivateKeyParameters)
+        {
+            agreement = getAgreement("X448");
         }
         else
         {
-            throw new InvalidKeyException("cannot identify XDH private key");
+            throw new InvalidKeyException("unsupported private key type");
         }
 
         ukmParameters = null;
@@ -111,12 +82,12 @@ public class KeyAgreementSpi
             dhuSpec = (DHUParameterSpec)params;
 
             ukmParameters = dhuSpec.getUserKeyingMaterial();
-            
+
             agreement.init(new XDHUPrivateParameters(
                 priv, ((BCXDHPrivateKey)dhuSpec.getEphemeralPrivateKey()).engineGetKeyParameters(),
                 ((BCXDHPublicKey)dhuSpec.getEphemeralPublicKey()).engineGetKeyParameters()));
         }
-        else
+        else if (params != null)
         {
             agreement.init(priv);
 
@@ -133,6 +104,10 @@ public class KeyAgreementSpi
                 throw new InvalidAlgorithmParameterException("unknown ParameterSpec");
             }
         }
+        else
+        {
+            agreement.init(priv);
+        }
 
         if (kdf != null && ukmParameters == null)
         {
@@ -143,6 +118,11 @@ public class KeyAgreementSpi
     protected Key engineDoPhase(Key key, boolean lastPhase)
         throws InvalidKeyException, IllegalStateException
     {
+        if (!(key instanceof PublicKey))
+        {
+            throw new InvalidKeyException("public XDH key required");
+        }
+
         if (agreement == null)
         {
             throw new IllegalStateException(kaAlgorithm + " not initialised.");
@@ -153,12 +133,7 @@ public class KeyAgreementSpi
             throw new IllegalStateException(kaAlgorithm + " can only be between two parties.");
         }
 
-        if (!(key instanceof BCXDHPublicKey))
-        {
-            throw new InvalidKeyException("cannot identify XDH private key");
-        }
-
-        AsymmetricKeyParameter pub = ((BCXDHPublicKey)key).engineGetKeyParameters();
+        AsymmetricKeyParameter pub = EdECUtil.generatePublicKeyParameter((PublicKey)key);
 
         result = new byte[agreement.getAgreementSize()];
 

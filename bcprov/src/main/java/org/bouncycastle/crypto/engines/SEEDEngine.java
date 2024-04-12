@@ -2,8 +2,10 @@ package org.bouncycastle.crypto.engines;
 
 import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.OutputLengthException;
+import org.bouncycastle.crypto.constraints.DefaultServiceProperties;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 /**
@@ -178,6 +180,8 @@ public class SEEDEngine
     {
         this.forEncryption = forEncryption;
         wKey = createWorkingKey(((KeyParameter)params).getKey());
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(
+                    this.getAlgorithmName(), 128, params, Utils.getPurpose(forEncryption)));
     }
 
     public String getAlgorithmName()
@@ -243,6 +247,11 @@ public class SEEDEngine
 
     private int[] createWorkingKey(byte[] inKey)
     {
+        if (inKey.length != 16)
+        {
+            throw new IllegalArgumentException("key size must be 128 bits");
+        }
+        
         int[] key = new int[32];
         long lower = bytesToLong(inKey, 0);
         long upper = bytesToLong(inKey, 8);

@@ -13,7 +13,6 @@ import java.security.spec.AlgorithmParameterSpec;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherSpi;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.ShortBufferException;
@@ -21,6 +20,7 @@ import javax.crypto.interfaces.DHKey;
 import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.interfaces.DHPublicKey;
 
+import org.bouncycastle.crypto.BufferedBlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.KeyEncoder;
@@ -43,6 +43,7 @@ import org.bouncycastle.crypto.params.IESWithCipherParameters;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.parsers.DHIESPublicKeyParser;
 import org.bouncycastle.crypto.util.DigestFactory;
+import org.bouncycastle.jcajce.provider.asymmetric.util.BaseCipherSpi;
 import org.bouncycastle.jcajce.provider.asymmetric.util.DHUtil;
 import org.bouncycastle.jcajce.provider.asymmetric.util.IESUtil;
 import org.bouncycastle.jcajce.provider.util.BadBlockException;
@@ -55,7 +56,7 @@ import org.bouncycastle.util.Strings;
 
 
 public class IESCipher
-    extends CipherSpi
+    extends BaseCipherSpi
 {
     private final JcaJceHelper helper = new BCJcaJceHelper();
     private final int ivLength;
@@ -84,16 +85,9 @@ public class IESCipher
 
     public int engineGetBlockSize()
     {
-        if (engine.getCipher() != null)
-        {
-            return engine.getCipher().getBlockSize();
-        }
-        else
-        {
-            return 0;
-        }
+        BufferedBlockCipher cipher = engine.getCipher();
+        return cipher == null ? 0 : cipher.getBlockSize();
     }
-
 
     public int engineGetKeySize(Key key)
     {
@@ -106,7 +100,6 @@ public class IESCipher
             throw new IllegalArgumentException("not a DH key");
         }
     }
-
 
     public byte[] engineGetIV()
     {
@@ -262,16 +255,10 @@ public class IESCipher
         SecureRandom random)
         throws InvalidAlgorithmParameterException, InvalidKeyException
     {
-        // Use default parameters (including cipher key size) if none are specified
-        if (engineSpec == null)
+        // NOTE: For secure usage, sender and receiver should agree on a fixed value for the nonce.
+        if (engineSpec == null && ivLength == 0)
         {
-            byte[] nonce = null;
-            if (ivLength != 0 && opmode == Cipher.ENCRYPT_MODE)
-            {
-                nonce = new byte[ivLength];
-                random.nextBytes(nonce);
-            }
-            this.engineSpec = IESUtil.guessParameterSpec(engine.getCipher(), nonce);
+            this.engineSpec = IESUtil.guessParameterSpec(engine.getCipher(), null);
         }
         else if (engineSpec instanceof IESParameterSpec)
         {
@@ -402,14 +389,14 @@ public class IESCipher
             engineSpec.getMacKeySize(),
             engineSpec.getCipherKeySize());
 
-        if (engineSpec.getNonce() != null)
+        byte[] engineSpecNonce = engineSpec.getNonce();
+        if (engineSpecNonce != null)
         {
-            params = new ParametersWithIV(params, engineSpec.getNonce());
+            params = new ParametersWithIV(params, engineSpecNonce);
         }
 
         DHParameters dhParams = ((DHKeyParameters)key).getParameters();
 
-        byte[] V;
         if (otherKeyParameter != null)
         {
             try
@@ -528,7 +515,7 @@ public class IESCipher
             super(new IESEngine(new DHBasicAgreement(),
                 new KDF2BytesGenerator(DigestFactory.createSHA1()),
                 new HMac(DigestFactory.createSHA1()),
-                new PaddedBufferedBlockCipher(new CBCBlockCipher(new DESedeEngine()))), 8);
+                new PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(new DESedeEngine()))), 8);
         }
     }
 
@@ -540,7 +527,7 @@ public class IESCipher
             super(new IESEngine(new DHBasicAgreement(),
                 new KDF2BytesGenerator(DigestFactory.createSHA1()),
                 new HMac(DigestFactory.createSHA1()),
-                new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESEngine()))), 16);
+                new PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(AESEngine.newInstance()))), 16);
         }
     }
 }

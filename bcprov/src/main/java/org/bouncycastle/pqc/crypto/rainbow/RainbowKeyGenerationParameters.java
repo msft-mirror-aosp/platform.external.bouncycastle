@@ -11,10 +11,12 @@ public class RainbowKeyGenerationParameters
 
     public RainbowKeyGenerationParameters(
         SecureRandom random,
-        RainbowParameters params)
+        RainbowParameters params
+    )
     {
-        // TODO: key size?
-        super(random, params.getVi()[params.getVi().length - 1] - params.getVi()[0]);
+
+        // TODO: actual strength
+        super(random, 256);
         this.params = params;
     }
 

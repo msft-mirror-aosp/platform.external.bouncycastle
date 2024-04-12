@@ -62,6 +62,8 @@ public class ECNRSigner
         {
             this.key = (ECPublicKeyParameters)param;
         }
+
+        CryptoServicesRegistrar.checkConstraints(Utils.getDefaultProperties("ECNR", key, forSigning));
     }
 
     public BigInteger getOrder()

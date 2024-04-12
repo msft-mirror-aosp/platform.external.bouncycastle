@@ -2,8 +2,11 @@ package org.bouncycastle.crypto.engines;
 
 import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicePurpose;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.OutputLengthException;
+import org.bouncycastle.crypto.constraints.DefaultServiceProperties;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 /**
@@ -313,6 +316,7 @@ public class CAST5Engine
 
     public CAST5Engine()
     {
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(getAlgorithmName(), 128));
     }
 
     /**
@@ -333,6 +337,7 @@ public class CAST5Engine
             _workingKey = ((KeyParameter)params).getKey();
 
             setKey(_workingKey);
+            CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(getAlgorithmName(), bitsOfSecurity(), params, getPurpose()));
 
             return;
         }
@@ -825,5 +830,23 @@ public class CAST5Engine
             ((b[i+1] & 0xff) << 16) |
             ((b[i+2] & 0xff) << 8) |
             ((b[i+3] & 0xff));
+    }
+
+    private int bitsOfSecurity()
+    {
+        if (_workingKey == null)
+        {
+            return 128;
+        }
+        return _workingKey.length * 8;
+    }
+
+    private CryptoServicePurpose getPurpose()
+    {
+        if (_workingKey == null)
+        {
+            return CryptoServicePurpose.ANY;
+        }
+        return _encrypting ? CryptoServicePurpose.ENCRYPTION : CryptoServicePurpose.DECRYPTION;
     }
 }

@@ -5,18 +5,19 @@ import java.io.OutputStream;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.CMPObjectIdentifiers;
-import org.bouncycastle.asn1.cmp.PBMParameter;
 import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.crmf.PKMACBuilder;
 import org.bouncycastle.operator.ContentVerifier;
 import org.bouncycastle.operator.ContentVerifierProvider;
 import org.bouncycastle.operator.MacCalculator;
+import org.bouncycastle.operator.PBEMacCalculatorProvider;
 import org.bouncycastle.util.Arrays;
 
 /**
@@ -82,14 +83,24 @@ public class ProtectedPKIMessage
     }
 
     /**
-     * Determine whether the message is protected by a password based MAC. Use verify(PKMACBuilder, char[])
+     * Determine whether the message is protected by a CMP password based MAC. Use verify(PBEMacCalculatorProvider, char[])
      * to verify the message if this method returns true.
      *
      * @return true if protection MAC PBE based, false otherwise.
      */
     public boolean hasPasswordBasedMacProtection()
     {
-        return pkiMessage.getHeader().getProtectionAlg().getAlgorithm().equals(CMPObjectIdentifiers.passwordBasedMac);
+        return CMPObjectIdentifiers.passwordBasedMac.equals(getProtectionAlgorithm().getAlgorithm());
+    }
+
+    /**
+     * Return the message's protection algorithm.
+     *
+     * @return the algorithm ID for the message's protection algorithm.
+     */
+    public AlgorithmIdentifier getProtectionAlgorithm()
+    {
+        return pkiMessage.getHeader().getProtectionAlg();
     }
 
     /**
@@ -126,12 +137,11 @@ public class ProtectedPKIMessage
     public boolean verify(ContentVerifierProvider verifierProvider)
         throws CMPException
     {
-        ContentVerifier verifier;
         try
         {
-            verifier = verifierProvider.get(pkiMessage.getHeader().getProtectionAlg());
+            ContentVerifier verifier = verifierProvider.get(getProtectionAlgorithm());
 
-            return verifySignature(pkiMessage.getProtection().getBytes(), verifier);
+            return verifySignature(pkiMessage.getProtection().getOctets(), verifier);
         }
         catch (Exception e)
         {
@@ -142,36 +152,21 @@ public class ProtectedPKIMessage
     /**
      * Verify a message with password based MAC protection.
      *
-     * @param pkMacBuilder MAC builder that can be used to construct the appropriate MacCalculator
+     * @param pbeMacCalculatorProvider MAC builder that can be used to construct the appropriate MacCalculator
      * @param password the MAC password
      * @return true if the passed in password and MAC builder verify the message, false otherwise.
      * @throws CMPException if algorithm not MAC based, or an exception is thrown verifying the MAC.
      */
-    public boolean verify(PKMACBuilder pkMacBuilder, char[] password)
+    public boolean verify(PBEMacCalculatorProvider pbeMacCalculatorProvider, char[] password)
         throws CMPException
     {
-        if (!CMPObjectIdentifiers.passwordBasedMac.equals(pkiMessage.getHeader().getProtectionAlg().getAlgorithm()))
-        {
-            throw new CMPException("protection algorithm not mac based");
-        }
-
         try
         {
-            pkMacBuilder.setParameters(PBMParameter.getInstance(pkiMessage.getHeader().getProtectionAlg().getParameters()));
-            MacCalculator calculator = pkMacBuilder.build(password);
+            MacCalculator calculator = pbeMacCalculatorProvider.get(getProtectionAlgorithm(), password);
 
-            OutputStream macOut = calculator.getOutputStream();
+            CMPUtil.derEncodeToStream(createProtected(), calculator.getOutputStream());
 
-            ASN1EncodableVector v = new ASN1EncodableVector();
-
-            v.add(pkiMessage.getHeader());
-            v.add(pkiMessage.getBody());
-
-            macOut.write(new DERSequence(v).getEncoded(ASN1Encoding.DER));
-
-            macOut.close();
-
-            return Arrays.areEqual(calculator.getMac(), pkiMessage.getProtection().getBytes());
+            return Arrays.constantTimeAreEqual(calculator.getMac(), pkiMessage.getProtection().getOctets());
         }
         catch (Exception e)
         {
@@ -180,19 +175,17 @@ public class ProtectedPKIMessage
     }
 
     private boolean verifySignature(byte[] signature, ContentVerifier verifier)
-        throws IOException
     {
-        ASN1EncodableVector v = new ASN1EncodableVector();
-
-        v.add(pkiMessage.getHeader());
-        v.add(pkiMessage.getBody());
-
-        OutputStream sOut = verifier.getOutputStream();
-
-        sOut.write(new DERSequence(v).getEncoded(ASN1Encoding.DER));
-
-        sOut.close();
+        CMPUtil.derEncodeToStream(createProtected(), verifier.getOutputStream());
 
         return verifier.verify(signature);
+    }
+
+    private DERSequence createProtected()
+    {
+        ASN1EncodableVector v = new ASN1EncodableVector(2);
+        v.add(pkiMessage.getHeader());
+        v.add(pkiMessage.getBody());
+        return new DERSequence(v);
     }
 }

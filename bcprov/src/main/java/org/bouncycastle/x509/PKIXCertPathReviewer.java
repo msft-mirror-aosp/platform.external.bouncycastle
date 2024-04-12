@@ -11,6 +11,7 @@ import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidatorException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateNotYetValidException;
@@ -38,6 +39,7 @@ import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Enumerated;
+import org.bouncycastle.asn1.ASN1IA5String;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
@@ -45,7 +47,6 @@ import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.DERIA5String;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.x509.AccessDescription;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -80,6 +81,7 @@ import org.bouncycastle.util.Objects;
 /**
  * PKIXCertPathReviewer<br>
  * Validation of X.509 Certificate Paths. Tries to find as much errors in the Path as possible.
+ * @deprecated use org.bouncycastle.pkix.jcajce.PKIXCertPathReviewer in the bcpkix package
  */
 public class PKIXCertPathReviewer extends CertPathValidatorUtilities
 {
@@ -136,9 +138,47 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
         {
             throw new NullPointerException("certPath was null");
         }
-        this.certPath = certPath;
 
-        certs = certPath.getCertificates();
+        List<Certificate> cs = (List<Certificate>)certPath.getCertificates();
+        if (cs.size() != 1)
+        {
+            // check trust anchor not included in certPath as it will
+            // cause havoc otherwise.
+            Set tas = new HashSet();
+            for (Iterator it = params.getTrustAnchors().iterator(); it.hasNext();)
+            {
+                TrustAnchor ta = (TrustAnchor)it.next();
+
+                tas.add(ta.getTrustedCert());
+            }
+
+            List certs = new ArrayList();
+            for (int i = 0; i != cs.size(); i++)
+            {
+                // don't include the trust anchor
+                if (!tas.contains(cs.get(i)))
+                {
+                    certs.add(cs.get(i));
+                }
+            }
+            try
+            {
+                CertificateFactory cf = CertificateFactory.getInstance("X.509", "BC");
+
+                this.certPath = cf.generateCertPath(certs);
+            }
+            catch (GeneralSecurityException e)
+            {
+                throw new IllegalStateException("unable to rebuild certpath");
+            }
+            this.certs = certs;
+        }
+        else
+        {
+            this.certPath = certPath;
+            this.certs = certPath.getCertificates();
+        }
+
         n = certs.size();
         if (certs.isEmpty())
         {
@@ -482,7 +522,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
 //                            switch(o.getTagNo())            TODO - move resources to PKIXNameConstraints
 //                            {
 //                            case 1:
-//                                String email = DERIA5String.getInstance(o, true).getString();
+//                                String email = ASN1IA5String.getInstance(o, true).getString();
 //
 //                                try
 //                                {
@@ -628,11 +668,8 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
 
         X509Certificate cert = null;
 
-        int i;
         for (int index = certs.size() - 1; index > 0; index--)
         {
-            i = n - index;
-
             cert = (X509Certificate) certs.get(index);
 
             // l)
@@ -653,8 +690,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
             BasicConstraints bc;
             try
             {
-                bc = BasicConstraints.getInstance(getExtensionValue(cert,
-                        BASIC_CONSTRAINTS));
+                bc = BasicConstraints.getInstance(getExtensionValue(cert, BASIC_CONSTRAINTS));
             }
             catch (AnnotatedException ae)
             {
@@ -663,21 +699,14 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                 bc = null;
             }
 
-            if (bc != null)
+            if (bc != null && bc.isCA())
             {
-                BigInteger _pathLengthConstraint = bc.getPathLenConstraint();
-
-                if (_pathLengthConstraint != null)
+                ASN1Integer pathLenConstraint = bc.getPathLenConstraintInteger();
+                if (pathLenConstraint != null)
                 {
-                    int _plc = _pathLengthConstraint.intValue();
-
-                    if (_plc < maxPathLength)
-                    {
-                        maxPathLength = _plc;
-                    }
+                    maxPathLength = Math.min(maxPathLength, pathLenConstraint.intPositiveValueExact());
                 }
             }
-
         }
 
         ErrorBundle msg = new ErrorBundle(RESOURCE_NAME,"CertPathReviewer.totalPathLength",
@@ -710,6 +739,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
         try
         {
             X509Certificate cert = (X509Certificate) certs.get(certs.size() - 1);
+
             Collection trustColl = getTrustAnchors(cert,pkixParams.getTrustAnchors());
             if (trustColl.size() > 1)
             {
@@ -740,6 +770,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                 {
                     trustPublicKey = trust.getCAPublicKey();
                 }
+
                 try
                 {
                     CertPathValidatorUtilities.verifyX509Certificate(cert, trustPublicKey,
@@ -812,7 +843,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
         AlgorithmIdentifier workingAlgId = null;
         ASN1ObjectIdentifier workingPublicKeyAlgorithm = null;
         ASN1Encodable workingPublicKeyParameters = null;
-        
+
         if (trust != null)
         {
             sign = trust.getTrustedCert();
@@ -838,7 +869,6 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                 addError(msg);
                 workingAlgId = null;
             }
-            
         }
 
         // Basic cert checks
@@ -860,7 +890,6 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
             // first time from the TrustAnchor
             //
             cert = (X509Certificate) certs.get(index);
-
             // verify signature
             if (workingPublicKey != null)
             {
@@ -1842,7 +1871,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
             }
             
             //
-            // process critical extesions for each certificate
+            // process critical extensions for each certificate
             //
             
             X509Certificate cert = null;
@@ -1869,7 +1898,11 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                 criticalExtensions.remove(BASIC_CONSTRAINTS);
                 criticalExtensions.remove(SUBJECT_ALTERNATIVE_NAME);
                 criticalExtensions.remove(NAME_CONSTRAINTS);
-                
+
+                if (index == 0)     // EE certificate
+                {
+                    criticalExtensions.remove(Extension.extendedKeyUsage.getId());
+                }
                 // process qcStatements extension
                 if (criticalExtensions.contains(QC_STATEMENT))
                 {
@@ -2087,7 +2120,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
             Date nextUpdate = crl.getNextUpdate();
             Object[] arguments = new Object[]{ new TrustedInput(thisUpdate), new TrustedInput(nextUpdate) };
 
-            if (nextUpdate == null || validDate.before(crl.getNextUpdate()))
+            if (nextUpdate == null || validDate.before(nextUpdate))
             {
                 validCrlFound = true;
                 ErrorBundle msg = new ErrorBundle(RESOURCE_NAME, "CertPathReviewer.localValidCRL", arguments);
@@ -2395,7 +2428,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                     {
                         if (generalNames[j].getTagNo() == GeneralName.uniformResourceIdentifier)
                         {
-                            String url = ((DERIA5String) generalNames[j].getName()).getString();
+                            String url = ((ASN1IA5String)generalNames[j].getName()).getString();
                             urls.add(url);
                         }
                     }
@@ -2419,7 +2452,7 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                     GeneralName name = ads[i].getAccessLocation();
                     if (name.getTagNo() == GeneralName.uniformResourceIdentifier)
                     {
-                        String url = ((DERIA5String) name.getName()).getString();
+                        String url = ((ASN1IA5String)name.getName()).getString();
                         urls.add(url);
                     }
                 }
@@ -2482,11 +2515,19 @@ public class PKIXCertPathReviewer extends CertPathValidatorUtilities
                 ASN1OctetString oct = (ASN1OctetString)ASN1Primitive.fromByteArray(ext);
                 AuthorityKeyIdentifier authID = AuthorityKeyIdentifier.getInstance(ASN1Primitive.fromByteArray(oct.getOctets()));
 
-                certSelectX509.setSerialNumber(authID.getAuthorityCertSerialNumber());
-                byte[] keyID = authID.getKeyIdentifier();
-                if (keyID != null)
+                // we ignore key identifier as if set, selector expects parent to have subjectKeyID
+                BigInteger serial = authID.getAuthorityCertSerialNumber();
+                if (serial != null)
                 {
-                    certSelectX509.setSubjectKeyIdentifier(new DEROctetString(keyID).getEncoded());
+                    certSelectX509.setSerialNumber(authID.getAuthorityCertSerialNumber());
+                }
+                else
+                {
+                    byte[] keyID = authID.getKeyIdentifier();
+                    if (keyID != null)
+                    {
+                        certSelectX509.setSubjectKeyIdentifier(new DEROctetString(keyID).getEncoded());
+                    }
                 }
             }
         }

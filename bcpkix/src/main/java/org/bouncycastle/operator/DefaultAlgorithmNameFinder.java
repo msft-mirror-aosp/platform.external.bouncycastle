@@ -2,8 +2,10 @@ package org.bouncycastle.operator;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.bsi.BSIObjectIdentifiers;
 import org.bouncycastle.asn1.cryptopro.CryptoProObjectIdentifiers;
 import org.bouncycastle.asn1.eac.EACObjectIdentifiers;
@@ -42,6 +44,45 @@ public class DefaultAlgorithmNameFinder
         algorithms.put(EACObjectIdentifiers.id_TA_ECDSA_SHA_256, "SHA256WITHCVC-ECDSA");
         algorithms.put(EACObjectIdentifiers.id_TA_ECDSA_SHA_384, "SHA384WITHCVC-ECDSA");
         algorithms.put(EACObjectIdentifiers.id_TA_ECDSA_SHA_512, "SHA512WITHCVC-ECDSA");
+        algorithms.put(BCObjectIdentifiers.falcon_512, "FALCON");
+        algorithms.put(BCObjectIdentifiers.falcon_1024, "FALCON");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_128s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_128f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_128s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_128f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_128s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_128f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_192s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_192f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_192s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_192f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_192s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_192f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_256s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_256f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_256s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_256f_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_256s_r3, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_256f_r3, "SPHINCS+");
+
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_128s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_128f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_128s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_128f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_128s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_128f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_192s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_192f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_192s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_192f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_192s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_192f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_256s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_sha2_256f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_256s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_shake_256f_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_256s_r3_simple, "SPHINCS+");
+        algorithms.put(BCObjectIdentifiers.sphincsPlus_haraka_256f_r3_simple, "SPHINCS+");
 
         algorithms.put(NISTObjectIdentifiers.id_sha224, "SHA224");
         algorithms.put(NISTObjectIdentifiers.id_sha256, "SHA256");
@@ -133,6 +174,15 @@ public class DefaultAlgorithmNameFinder
         algorithms.put(GNUObjectIdentifiers.Serpent_256_CBC, "Serpent-256/CBC");
         algorithms.put(GNUObjectIdentifiers.Serpent_256_CFB, "Serpent-256/CFB");
         algorithms.put(GNUObjectIdentifiers.Serpent_256_OFB, "Serpent-256/OFB");
+        algorithms.put(MiscObjectIdentifiers.id_blake2b160, "BLAKE2b-160");
+        algorithms.put(MiscObjectIdentifiers.id_blake2b256, "BLAKE2b-256");
+        algorithms.put(MiscObjectIdentifiers.id_blake2b384, "BLAKE2b-384");
+        algorithms.put(MiscObjectIdentifiers.id_blake2b512, "BLAKE2b-512");
+        algorithms.put(MiscObjectIdentifiers.id_blake2s128, "BLAKE2s-128");
+        algorithms.put(MiscObjectIdentifiers.id_blake2s160, "BLAKE2s-160");
+        algorithms.put(MiscObjectIdentifiers.id_blake2s224, "BLAKE2s-224");
+        algorithms.put(MiscObjectIdentifiers.id_blake2s256, "BLAKE2s-256");
+        algorithms.put(MiscObjectIdentifiers.blake3_256, "BLAKE3-256");
     }
 
     public boolean hasAlgorithmName(ASN1ObjectIdentifier objectIdentifier)
@@ -151,5 +201,10 @@ public class DefaultAlgorithmNameFinder
     {
         // TODO: take into account PSS/OAEP params
         return getAlgorithmName(algorithmIdentifier.getAlgorithm());
+    }
+
+    public Set<ASN1ObjectIdentifier> getOIDSet()
+    {
+        return algorithms.keySet();
     }
 }

@@ -5,8 +5,11 @@ import java.util.Vector;
 
 import org.bouncycastle.crypto.AsymmetricBlockCipher;
 import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.DataLengthException;
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.bouncycastle.crypto.constraints.ConstraintUtils;
+import org.bouncycastle.crypto.constraints.DefaultServiceProperties;
 import org.bouncycastle.crypto.params.NaccacheSternKeyParameters;
 import org.bouncycastle.crypto.params.NaccacheSternPrivateKeyParameters;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
@@ -52,6 +55,7 @@ public class NaccacheSternEngine
         {
             if (debug)
             {
+                // -DM System.out.print
                 System.out.println("Constructing lookup Array");
             }
             NaccacheSternPrivateKeyParameters priv = (NaccacheSternPrivateKeyParameters)key;
@@ -67,6 +71,7 @@ public class NaccacheSternEngine
 
                 if (debug)
                 {
+                    // -DM System.out.print
                     System.out.println("Constructing lookup ArrayList for " + actualPrimeValue);
                 }
 
@@ -80,6 +85,9 @@ public class NaccacheSternEngine
                 }
             }
         }
+
+        CryptoServicesRegistrar.checkConstraints(new DefaultServiceProperties(
+                "NaccacheStern", ConstraintUtils.bitsOfSecurityFor(key.getModulus()), param, Utils.getPurpose(forEncryption)));
     }
 
     public void setDebug(boolean debug)
@@ -167,6 +175,7 @@ public class NaccacheSternEngine
         BigInteger input = new BigInteger(1, block);
         if (debug)
         {
+            // -DM System.out.print
             System.out.println("input as BigInteger: " + input);
         }
         byte[] output;
@@ -188,6 +197,7 @@ public class NaccacheSternEngine
                 {
                     if (debug)
                     {
+                        // -DM System.out.println
                         System.out.println("Prime is " + primes.elementAt(i) + ", lookup table has size " + al.size());
                     }
                     throw new InvalidCipherTextException("Error in lookup Array for "
@@ -202,6 +212,7 @@ public class NaccacheSternEngine
                 {
                     if (debug)
                     {
+                        // -DM 3 System.out.print
                         System.out.println("Actual prime is " + primes.elementAt(i));
                         System.out.println("Decrypted value is " + exp);
 
@@ -209,6 +220,7 @@ public class NaccacheSternEngine
                                         + " is: ");
                         for (int j = 0; j < lookup[i].size(); j++)
                         {
+                            // -DM System.out.println
                             System.out.println(lookup[i].elementAt(j));
                         }
                     }
@@ -266,6 +278,7 @@ public class NaccacheSternEngine
                         tmp.length);
         if (debug)
         {
+           // -DM System.out.print
             System.out
                     .println("Encrypted value is:  " + new BigInteger(output));
         }
@@ -312,6 +325,7 @@ public class NaccacheSternEngine
         m1m2Crypt = m1m2Crypt.mod(key.getModulus());
         if (debug)
         {
+            // -DM 3 System.out.print
             System.out.println("c(m1) as BigInteger:....... " + m1Crypt);
             System.out.println("c(m2) as BigInteger:....... " + m2Crypt);
             System.out.println("c(m1)*c(m2)%n = c(m1+m2)%n: " + m1m2Crypt);
@@ -339,6 +353,7 @@ public class NaccacheSternEngine
     {
         if (debug)
         {
+            // -DM System.out.println
             System.out.println();
         }
         if (data.length > getInputBlockSize())
@@ -347,6 +362,7 @@ public class NaccacheSternEngine
             int outBlocksize = getOutputBlockSize();
             if (debug)
             {
+                // -DM 3 System.out.print
                 System.out.println("Input blocksize is:  " + inBlocksize + " bytes");
                 System.out.println("Output blocksize is: " + outBlocksize + " bytes");
                 System.out.println("Data has length:.... " + data.length + " bytes");
@@ -369,6 +385,7 @@ public class NaccacheSternEngine
                 }
                 if (debug)
                 {
+                    // -DM System.out.println
                     System.out.println("new datapos is " + datapos);
                 }
                 if (tmp != null)
@@ -381,6 +398,7 @@ public class NaccacheSternEngine
                 {
                     if (debug)
                     {
+                        // -DM System.out.println
                         System.out.println("cipher returned null");
                     }
                     throw new InvalidCipherTextException("cipher returned null");
@@ -390,6 +408,7 @@ public class NaccacheSternEngine
             System.arraycopy(retval, 0, ret, 0, retpos);
             if (debug)
             {
+                // -DM System.out.println
                 System.out.println("returning " + ret.length + " bytes");
             }
             return ret;
@@ -398,6 +417,7 @@ public class NaccacheSternEngine
         {
             if (debug)
             {
+                // -DM System.out.println
                 System.out.println("data size is less then input block size, processing directly");
             }
             return processBlock(data, 0, data.length);

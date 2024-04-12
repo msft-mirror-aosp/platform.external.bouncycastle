@@ -2,6 +2,7 @@ package org.bouncycastle.cert.cmp;
 
 import java.math.BigInteger;
 
+import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.CertStatus;
 import org.bouncycastle.asn1.cmp.PKIStatusInfo;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -36,25 +37,16 @@ public class CertificateStatus
     public boolean isVerified(X509CertificateHolder certHolder, DigestCalculatorProvider digesterProvider)
         throws CMPException
     {
-        AlgorithmIdentifier digAlg = digestAlgFinder.find(certHolder.toASN1Structure().getSignatureAlgorithm());
-        if (digAlg == null)
-        {
-            throw new CMPException("cannot find algorithm for digest from signature");
-        }
+        return isVerified(new CMPCertificate(certHolder.toASN1Structure()), certHolder.getSignatureAlgorithm(),
+            digesterProvider);
+    }
 
-        DigestCalculator digester;
+    public boolean isVerified(CMPCertificate cmpCert, AlgorithmIdentifier signatureAlgorithm,
+        DigestCalculatorProvider digesterProvider)
+        throws CMPException
+    {
+        byte[] certHash = CMPUtil.calculateCertHash(cmpCert, signatureAlgorithm, digesterProvider, digestAlgFinder);
 
-        try
-        {
-            digester = digesterProvider.get(digAlg);
-        }
-        catch (OperatorCreationException e)
-        {
-            throw new CMPException("unable to create digester: " + e.getMessage(), e);
-        }
-
-        CMPUtil.derEncodeToStream(certHolder.toASN1Structure(), digester.getOutputStream());
-
-        return Arrays.areEqual(certStatus.getCertHash().getOctets(), digester.getDigest());
+        return Arrays.constantTimeAreEqual(certStatus.getCertHash().getOctets(), certHash);
     }
 }

@@ -22,7 +22,7 @@ public class BouncyCastlePQCProvider
     extends Provider
     implements ConfigurableProvider
 {
-    private static String info = "BouncyCastle Post-Quantum Security Provider v1.67";
+    private static String info = "BouncyCastle Post-Quantum Security Provider v1.77";
 
     public static String PROVIDER_NAME = "BCPQC";
 
@@ -37,7 +37,10 @@ public class BouncyCastlePQCProvider
     private static final String ALGORITHM_PACKAGE = "org.bouncycastle.pqc.jcajce.provider.";
     private static final String[] ALGORITHMS =
         {
-            "Rainbow", "McEliece", "SPHINCS", "LMS", "NH", "XMSS", "QTESLA"
+            //"Rainbow", "McEliece",
+            "SPHINCS", "LMS", "NH", "XMSS", "SPHINCSPlus",
+            "CMCE", "Frodo", "SABER", "Picnic", "NTRU", "Falcon", "Kyber",
+            "Dilithium", "NTRUPrime", "BIKE", "HQC", "Rainbow"
         };
 
     /**
@@ -47,7 +50,7 @@ public class BouncyCastlePQCProvider
      */
     public BouncyCastlePQCProvider()
     {
-        super(PROVIDER_NAME, 1.67, info);
+        super(PROVIDER_NAME, 1.77, info);
 
         AccessController.doPrivileged(new PrivilegedAction()
         {
@@ -108,6 +111,12 @@ public class BouncyCastlePQCProvider
         put(key, value);
     }
 
+    public void addAlgorithm(String key, String value, Map<String, String> attributes)
+    {
+        addAlgorithm(key, value);
+        addAttributes(key, attributes);
+    }
+
     public void addAlgorithm(String type,  ASN1ObjectIdentifier oid, String className)
     {
         if (!containsKey(type + "." + className))
@@ -117,6 +126,13 @@ public class BouncyCastlePQCProvider
 
         addAlgorithm(type + "." + oid, className);
         addAlgorithm(type + ".OID." + oid, className);
+    }
+
+    public void addAlgorithm(String type, ASN1ObjectIdentifier oid, String className, Map<String, String> attributes)
+    {
+        addAlgorithm(type, oid, className);
+        addAttributes(type + "." + oid, attributes);
+        addAttributes(type + ".OID." + oid, attributes);
     }
 
     public void addKeyInfoConverter(ASN1ObjectIdentifier oid, AsymmetricKeyInfoConverter keyInfoConverter)

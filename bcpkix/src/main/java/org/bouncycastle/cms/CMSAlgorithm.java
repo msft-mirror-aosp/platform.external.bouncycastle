@@ -4,6 +4,7 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.bsi.BSIObjectIdentifiers;
 import org.bouncycastle.asn1.cryptopro.CryptoProObjectIdentifiers;
 import org.bouncycastle.asn1.kisa.KISAObjectIdentifiers;
+import org.bouncycastle.asn1.misc.MiscObjectIdentifiers;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.asn1.ntt.NTTObjectIdentifiers;
 import org.bouncycastle.asn1.oiw.OIWObjectIdentifiers;
@@ -18,8 +19,8 @@ public class CMSAlgorithm
     public static final ASN1ObjectIdentifier  DES_CBC         = OIWObjectIdentifiers.desCBC.intern();
     public static final ASN1ObjectIdentifier  DES_EDE3_CBC    = PKCSObjectIdentifiers.des_EDE3_CBC.intern();
     public static final ASN1ObjectIdentifier  RC2_CBC         = PKCSObjectIdentifiers.RC2_CBC.intern();
-    public static final ASN1ObjectIdentifier  IDEA_CBC        = new ASN1ObjectIdentifier("1.3.6.1.4.1.188.7.1.1.2").intern();
-    public static final ASN1ObjectIdentifier  CAST5_CBC       = new ASN1ObjectIdentifier("1.2.840.113533.7.66.10").intern();
+    public static final ASN1ObjectIdentifier  IDEA_CBC        = MiscObjectIdentifiers.as_sys_sec_alg_ideaCBC.intern();
+    public static final ASN1ObjectIdentifier  CAST5_CBC       = MiscObjectIdentifiers.cast5CBC.intern();
 
     public static final ASN1ObjectIdentifier  AES128_CBC      = NISTObjectIdentifiers.id_aes128_CBC.intern();
     public static final ASN1ObjectIdentifier  AES192_CBC      = NISTObjectIdentifiers.id_aes192_CBC.intern();
@@ -31,9 +32,9 @@ public class CMSAlgorithm
     public static final ASN1ObjectIdentifier  AES192_GCM      = NISTObjectIdentifiers.id_aes192_GCM.intern();
     public static final ASN1ObjectIdentifier  AES256_GCM      = NISTObjectIdentifiers.id_aes256_GCM.intern();
 
-//	public static final ASN1ObjectIdentifier  AES128_CBC_CMAC      = BSIObjectIdentifiers.id_aes128_CBC_CMAC;
-//	public static final ASN1ObjectIdentifier  AES192_CBC_CMAC      = BSIObjectIdentifiers.id_aes192_CBC_CMAC;
-//	public static final ASN1ObjectIdentifier  AES256_CBC_CMAC      = BSIObjectIdentifiers.id_aes256_CBC_CMAC;
+//    public static final ASN1ObjectIdentifier  AES128_CBC_CMAC      = BSIObjectIdentifiers.id_aes128_CBC_CMAC;
+//    public static final ASN1ObjectIdentifier  AES192_CBC_CMAC      = BSIObjectIdentifiers.id_aes192_CBC_CMAC;
+//    public static final ASN1ObjectIdentifier  AES256_CBC_CMAC      = BSIObjectIdentifiers.id_aes256_CBC_CMAC;
 
     public static final ASN1ObjectIdentifier  CAMELLIA128_CBC = NTTObjectIdentifiers.id_camellia128_cbc.intern();
     public static final ASN1ObjectIdentifier  CAMELLIA192_CBC = NTTObjectIdentifiers.id_camellia192_cbc.intern();
@@ -77,10 +78,14 @@ public class CMSAlgorithm
     public static final ASN1ObjectIdentifier  ECDHGOST3410_2012_256 = RosstandartObjectIdentifiers.id_tc26_agreement_gost_3410_12_256.intern();
     public static final ASN1ObjectIdentifier  ECDHGOST3410_2012_512 = RosstandartObjectIdentifiers.id_tc26_agreement_gost_3410_12_512.intern();
 
-	public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF  = BSIObjectIdentifiers.ecka_eg_X963kdf;
-	public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF_SHA256  = BSIObjectIdentifiers.ecka_eg_X963kdf_SHA256;
-	public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF_SHA384  = BSIObjectIdentifiers.ecka_eg_X963kdf_SHA384;
-	public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF_SHA512  = BSIObjectIdentifiers.ecka_eg_X963kdf_SHA512;
+    public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF  = BSIObjectIdentifiers.ecka_eg_X963kdf;
+    public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF_SHA256  = BSIObjectIdentifiers.ecka_eg_X963kdf_SHA256;
+    public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF_SHA384  = BSIObjectIdentifiers.ecka_eg_X963kdf_SHA384;
+    public static final ASN1ObjectIdentifier  ECKA_EG_X963KDF_SHA512  = BSIObjectIdentifiers.ecka_eg_X963kdf_SHA512;
+
+    public static final ASN1ObjectIdentifier  RSA_PKCS15 = PKCSObjectIdentifiers.rsaEncryption;
+    public static final ASN1ObjectIdentifier  RSA_OAEP = PKCSObjectIdentifiers.id_RSAES_OAEP;
+    public static final ASN1ObjectIdentifier  RSA_KEM = PKCSObjectIdentifiers.id_rsa_KEM;
 
     public static final ASN1ObjectIdentifier  SHA1 = OIWObjectIdentifiers.idSHA1.intern();
     public static final ASN1ObjectIdentifier  SHA224 = NISTObjectIdentifiers.id_sha224.intern();
@@ -95,4 +100,6 @@ public class CMSAlgorithm
     public static final ASN1ObjectIdentifier  RIPEMD160 = TeleTrusTObjectIdentifiers.ripemd160.intern();
     public static final ASN1ObjectIdentifier  RIPEMD256 = TeleTrusTObjectIdentifiers.ripemd256.intern();
 
+    public static final ASN1ObjectIdentifier  SHAKE128_LEN = NISTObjectIdentifiers.id_shake128_len.intern();
+    public static final ASN1ObjectIdentifier  SHAKE256_LEN = NISTObjectIdentifiers.id_shake256_len.intern();
 }
