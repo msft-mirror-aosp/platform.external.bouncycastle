@@ -89,6 +89,7 @@ java_library {
     visibility: [
         "//art/build/apex",
         "//art/build/sdk",
+        "//art/tools/ahat",
         "//art/tools/fuzzer",
         "//libcore:__subpackages__",
         "//packages/modules/ArtPrebuilt",
@@ -107,10 +108,12 @@ java_library {
 
     optimize: {
         enabled: true,
+        shrink: true,
         optimize: true,
         obfuscate: false,
         proguard_compatibility: false,
         ignore_warnings: false,
+        proguard_flags_files: ["proguard.flags"],
     },
 
     sdk_version: "none",
