@@ -172,6 +172,7 @@ unbundled_visibility = [
     "//external/android-key-attestation",
     "//external/conscrypt",
     "//external/okhttp",
+    "//external/keyattestation",
     "//external/robolectric-shadows",
     "//external/robolectric-shadows/robolectric",
     "//external/robolectric-shadows/shadows/supportv4",
