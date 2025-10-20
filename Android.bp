@@ -87,10 +87,7 @@ java_library {
     name: "bouncycastle",
     // Restrict visibility to only those targets that need to access it.
     visibility: [
-        "//art/build/apex",
-        "//art/build/sdk",
-        "//art/tools/ahat",
-        "//art/tools/fuzzer",
+        "//art:__subpackages__",
         "//libcore:__subpackages__",
         "//packages/modules/ArtPrebuilt",
     ],
@@ -172,6 +169,7 @@ unbundled_visibility = [
     "//external/android-key-attestation",
     "//external/conscrypt",
     "//external/okhttp",
+    "//external/keyattestation",
     "//external/robolectric-shadows",
     "//external/robolectric-shadows/robolectric",
     "//external/robolectric-shadows/shadows/supportv4",
