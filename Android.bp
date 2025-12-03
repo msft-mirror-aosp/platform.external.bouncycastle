@@ -362,13 +362,15 @@ java_library {
     },
 }
 
-// Bouncycastle for use by packages/modules/WebApp project.
+// Bouncycastle for use by packages/modules/WebApp and LSKF Recovery project .
 //
 // Excludes directories not needed.
 java_library {
     name: "bouncycastle-webapp",
     defaults: ["bouncycastle-errorprone-defaults"],
     visibility: [
+        "//frameworks/base/services/lskfreset",
+        "//frameworks/base/services/tests/lskfreset",
         "//packages/modules/WebApp/service",
     ],
     apex_available: [
